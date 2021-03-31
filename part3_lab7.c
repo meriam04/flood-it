@@ -1,5 +1,5 @@
 /* This files provides address values that exist in the system */
-
+// adding a funky little comment :D
 #define SDRAM_BASE            0xC0000000
 #define FPGA_ONCHIP_BASE      0xC8000000
 #define FPGA_CHAR_BASE        0xC9000000
