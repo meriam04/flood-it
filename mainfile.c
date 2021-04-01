@@ -68,7 +68,7 @@ int main(void)
 
       // initialize location and direction of rectangles
     for (int i=0;i<N;i++){
-      for (int j=0;j<N,j++){
+      for (int j=0;j<N;j++){
         xbox[i][j]=319/N +i;      //rounding err?
         ybox[i][j]=239/N +j;	//240-10+1
         flooded[i][j]=0;//unless i=[0,0]
@@ -98,7 +98,7 @@ int main(void)
 
         // code for drawing the boxes and lines (not shown)
         for (int i=0;i<N;i++){
-		for (int j=0;j<N,j++)
+		for (int j=0;j<N;j++)
           		draw_box(xbox[i][j],ybox[i][j],color_box[i][j]);            
         }
               
