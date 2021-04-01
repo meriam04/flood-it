@@ -52,18 +52,19 @@ void	wait_for_vsync();
 
 	
 volatile int pixel_buffer_start; // global variable
+int N=14;         //14x14 board, later can be selected 
 
 int main(void)
 {
     volatile int * pixel_ctrl_ptr = (int *)0xFF203020;
     // declare other variables
-    int N=14;         //14x14 board, later can be selected 
     int count=25;     //turn downcounter, later can be loaded from SW
     int xbox [N][N];  
     int ybox [N][N];
     int color[]={0xFFFF,0xFFE0,0xF800,0x07E0,0x001F,0x07FF,0xF81F,GREY,PINK,ORANGE};
     int color_box[N][N];
     int flooded [N][N];
+	short int flood_color=0xFFFF;
 
       // initialize location and direction of rectangles
     for (int i=0;i<N;i++){
@@ -97,11 +98,11 @@ int main(void)
 
         // code for drawing the boxes and lines (not shown)
         for (int i=0;i<N;i++){
-          draw_box(xbox[i],ybox[i],color_box[i]);             //draw these in 2d!!!!!
-          //draw_line(xbox[i], ybox[i], xbox[(i+1)% N], ybox[(i+1)%N], color_box[i]);
-
+		for (int j=0;j<N,j++)
+          		draw_box(xbox[i][j],ybox[i][j],color_box[i][j]);            
         }
-              //seperate interrupt for mouse click value here tells us what color is flooding
+              
+	    //seperate interrupt for mouse click value here tells us what color is flooding (load into flood_color)
       
         // code for updating flood value of boxes based on their color AND proximity to a flooded box, include recursion
 	      //for (int i=0;i<N;i++)//but 2d
@@ -127,37 +128,21 @@ void	wait_for_vsync(){
 		status = *(pixel_ctrl_ptr + 3);
 }
 
-void	draw_box(int x, int y, short int box_color){
-	for(int i=x;i<=x+9;i++){
-		for(int j=y;j<=y+9;j++)
+void	draw_box(int x, int y, short int box_color){		////////////CHECK DIM (width of each box)
+	for(int i=x;i<=x+(319/N);i++){
+		for(int j=y;j<=y+(239/N);j++)
 			plot_pixel(i,j,box_color);
 	}
 }
 
-void	draw_line(int x0, int y0, int x1, int y1, short int line_color){
+void	draw_line(int x0, int y0, int x1, int y1, short int line_color){		//if we want to draw a border later (maybe swap with meriam's? mine is unreliable asf)
 	int is_steep= ABS(x1-x0) < ABS(y1-y0);
-	/*if (ABS(x1-x0) < ABS(y1-y0))
-		is_steep=1;
-	else 
-		is_steep=0;*/
 	
 	if (x0>x1){
-		/*int temp=x0;
-		x0=x1;
-		x1=temp;
-		temp=y0;
-		y0=y1;
-		y1=temp;*/
 		swap(&x0,&x1);
 		swap(&y0,&y1);
 	}
 	if (is_steep){
-		/*int temp=x0;
-		x0=y0;
-		y0=temp;
-		temp=x1;
-		x1=y1;
-		y1=temp;*/
 		swap(&x0,&y0);
 		swap(&x1,&y1);
 	}
@@ -173,7 +158,6 @@ void	draw_line(int x0, int y0, int x1, int y1, short int line_color){
 	else
 		y_step=-1;
 	
-	//int y=y0;
 	for(int x=x0; x<x1; x++){////////////only<not<=
 		if(is_steep)
 			plot_pixel(y,x,line_color);
