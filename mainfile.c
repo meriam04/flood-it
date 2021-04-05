@@ -158,7 +158,7 @@ void	draw_line(int x0, int y0, int x1, int y1, short int line_color){		//if we w
 	else
 		y_step=-1;
 	
-	for(int x=x0; x<x1; x++){////////////only<not<=
+	for(int x=x0; x<x1; x++){   ////////////only<not<=
 		if(is_steep)
 			plot_pixel(y,x,line_color);
 		else
