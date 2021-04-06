@@ -53,22 +53,11 @@ void pushbutton_ISR(void);
 /* key_dir and pattern are written by interrupt service routines; we have to
 * declare these as volatile to avoid the compiler caching their values in
 * registers */
-volatile int tick = 0; // set to 1 every time the HPS timer expires
+
 volatile int key_dir = 0;
-volatile int pattern = 0x0F0F0F0F; // pattern for LED lights
-/* ********************************************************************************
-* This program demonstrates use of interrupts with C code. It first starts
-* two timers: an HPS timer, and the FPGA interval timer. The program responds
-* to interrupts from these timers in addition to the pushbutton KEYs in the
-* FPGA.
-*
-* The interrupt service routine for the HPS timer causes the main program to
-* flash the green light connected to the HPS GPIO1 port.
-*
-* The interrupt service routine for the interval timer displays a pattern on
-* the LED lights, and shifts this pattern either left or right. The shifting
-* direction is reversed when KEY[1] is pressed I'VE EXCLUDED THE TIMER INTERRUPTS
-********************************************************************************/
+//volatile int pattern = 0x0F0F0F0F; // pattern for LED lights
+//extern volatile int key_dir;
+
 int main(void)
 {
     //volatile int * HPS_GPIO1_ptr = (int *)HPS_GPIO1_BASE; // GPIO1 base address
@@ -83,10 +72,7 @@ int main(void)
     enable_A9_interrupts(); // enable interrupts on proc
     
     while (1) {   //program to loop while waiting for interrupts
-        if (tick) {
-            tick = 0;
-            //*HPS_GPIO1_ptr = HPS_timer_LEDG; // turn on/off the green light LEDG
-            //HPS_timer_LEDG ^= 0x01000000; // toggle the bit that controls LEDG
+           //or nothing
         }
     }
 }
@@ -208,8 +194,7 @@ void __attribute__((interrupt)) __cs3_isr_fiq(void)
 }           
             
             
-extern volatile int key_dir;
-extern volatile int pattern;
+
 /***************************************************************************************
 * Pushbutton - Interrupt Service Routine
 *
@@ -221,6 +206,8 @@ volatile int * KEY_ptr = (int *)KEY_BASE;
     int press;
     press = *(KEY_ptr + 3); // read the pushbutton interrupt register
     *(KEY_ptr + 3) = press; // Clear the interrupt
+    
+     *(LEDR_BASE)=key_dir;
     key_dir ^= 1; // Toggle key_dir value
     return;
 }
