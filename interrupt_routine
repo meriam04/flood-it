@@ -7,13 +7,13 @@
 #define     KEYS_IRQ          73//or 0x49
 //define ps2_irq
 
-//#define     MPCORE_GIC_DIST   
-#define   MPCORE_GIC_CPUIF    0xFFFEC100
+#define     MPCORE_GIC_DIST    0xFFFED000 
+#define     MPCORE_GIC_CPUIF    0xFFFEC100
 #define       ICCICR          0x0           //offset of reg from base address of cpu interface
 #define       ICCPMR          0x04
 #define     ICCEOIR           0x10
 #define     ICCIAR            0x0C
-#define       ICDDCR          0xFFFED000
+#define       ICDDCR          0x0
 
 //#define   A9_ONCHIP_END
 
@@ -144,11 +144,11 @@ void config_GIC(void)
     // Set CPU Interface Control Register (ICCICR). Enable signaling of
     // interrupts
     address = MPCORE_GIC_CPUIF + ICCICR;
-    *((int *)address) = 1;//ENABLE?
+    *((int *)address) = 1;//ENABLE
     
     // Configure the Distributor Control Register (ICDDCR) to send pending
     // interrupts to CPUs
-    address =ICDDCR;//  MPCORE_GIC_DIST + 
+    address = MPCORE_GIC_DIST + ICDDCR;  
     *((int *)address) = 1;
 }
 
