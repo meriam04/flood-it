@@ -6,15 +6,17 @@
 #define     ENABLE            0x1
 #define     KEYS_IRQ          73//or 0x49
 //define ps2_irq
-#define        ICCIAR      0xFFFEC100
-#define       ICCEOIR     0xFFFEC110
-//#define       ICDDCR
-//#define       ICCICR
-//#define       ICCDMR
+
+//#define     MPCORE_GIC_DIST   
+#define   MPCORE_GIC_CPUIF    0xFFFEC100
+#define       ICCICR          0x0           //offset of reg from base address of cpu interface
+#define       ICCPMR          0x04
+#define     ICCEOIR           0x10
+#define     ICCIAR            0x0C
+#define       ICDDCR          0xFFFED000
 
 //#define   A9_ONCHIP_END
-//#define   MPCORE_GIC_CPUIF
-////#define   MPCORE_GIC_DIST
+
 #define SDRAM_BASE            0xC0000000
 #define FPGA_ONCHIP_BASE      0xC8000000
 #define FPGA_CHAR_BASE        0xC9000000
@@ -146,7 +148,7 @@ void config_GIC(void)
     
     // Configure the Distributor Control Register (ICDDCR) to send pending
     // interrupts to CPUs
-    address = MPCORE_GIC_DIST + ICDDCR;
+    address =ICDDCR;//  MPCORE_GIC_DIST + 
     *((int *)address) = 1;
 }
 
@@ -216,8 +218,9 @@ extern volatile int pattern;
 void pushbutton_ISR(void)
 {
 volatile int * KEY_ptr = (int *)KEY_BASE;
-int press;
-press = *(KEY_ptr + 3); // read the pushbutton interrupt register
-*(KEY_ptr + 3) = press; // Clear the interrupt
-key_dir ^= 1; // Toggle key_dir value
-return;
+    int press;
+    press = *(KEY_ptr + 3); // read the pushbutton interrupt register
+    *(KEY_ptr + 3) = press; // Clear the interrupt
+    key_dir ^= 1; // Toggle key_dir value
+    return;
+}
