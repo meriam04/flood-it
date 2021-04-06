@@ -4,8 +4,8 @@
 #define     INT_ENABLE        0b01000000
 #define     INT_DISABLE       0b11000000
 #define     ENABLE            0x1
-#define     KEYS_IRQ          73//or 0x49
-//define ps2_irq
+#define     KEYS_IRQ          73    //or 0x49
+#define     PS2_IRQ           79    //dual is 89
 
 #define     MPCORE_GIC_DIST    0xFFFED000 
 #define     MPCORE_GIC_CPUIF    0xFFFEC100
@@ -15,7 +15,7 @@
 #define     ICCIAR            0x0C
 #define       ICDDCR          0x0
 
-//#define   A9_ONCHIP_END
+#define   A9_ONCHIP_END       0xC803FFFF    //i think?
 
 #define SDRAM_BASE            0xC0000000
 #define FPGA_ONCHIP_BASE      0xC8000000
@@ -25,9 +25,9 @@
 #define LEDR_BASE             0xFF200000
 #define HEX3_HEX0_BASE        0xFF200020
 #define HEX5_HEX4_BASE        0xFF200030
+#define PS2_BASE                0xFF200100
 #define SW_BASE               0xFF200040
 #define KEY_BASE              0xFF200050
-//ps2 base
 #define TIMER_BASE            0xFF202000
 #define PIXEL_BUF_CTRL_BASE   0xFF203020
 #define CHAR_BUF_CTRL_BASE    0xFF203030
