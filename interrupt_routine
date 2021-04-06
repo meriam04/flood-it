@@ -6,10 +6,15 @@
 #define     ENABLE            0x1
 #define     KEYS_IRQ          73//or 0x49
 //define ps2_irq
-//#define     ICCeoir,ddcr,icr,dmr,etc see lab 6
+#define        ICCIAR      0xFFFEC100
+#define       ICCEOIR     0xFFFEC110
+//#define       ICDDCR
+//#define       ICCICR
+//#define       ICCDMR
 
 //#define   A9_ONCHIP_END
 //#define   MPCORE_GIC_CPUIF
+////#define   MPCORE_GIC_DIST
 #define SDRAM_BASE            0xC0000000
 #define FPGA_ONCHIP_BASE      0xC8000000
 #define FPGA_CHAR_BASE        0xC9000000
@@ -154,12 +159,10 @@ void __attribute__((interrupt)) __cs3_isr_irq(void)
     int address = MPCORE_GIC_CPUIF + ICCIAR;
     int int_ID = *((int *)address);
     
-    if (int_ID == KEYS_IRQ) // check if interrupt is from the HPS timer
-        HPS_timer_ISR();
+    if (int_ID == KEYS_IRQ) // check if interrupt is from the KEYS
+        pushbutton_ISR();
     /*else if (int_ID ==INTERVAL_TIMER_IRQ) // check if interrupt is from the Altera timer SUB WITH SOMETHING ELSE ie hex interrupt ID
         interval_timer_ISR();*/
-    else if (int_ID == ) // check if interrupt is from the KEYs
-        pushbutton_ISR();
     else
         while (1)
             ; // if unexpected, then stay here
@@ -203,3 +206,18 @@ void __attribute__((interrupt)) __cs3_isr_fiq(void)
 }           
             
             
+extern volatile int key_dir;
+extern volatile int pattern;
+/***************************************************************************************
+* Pushbutton - Interrupt Service Routine
+*
+* This routine toggles the key_dir variable from 0 <-> 1
+****************************************************************************************/
+void pushbutton_ISR(void)
+{
+volatile int * KEY_ptr = (int *)KEY_BASE;
+int press;
+press = *(KEY_ptr + 3); // read the pushbutton interrupt register
+*(KEY_ptr + 3) = press; // Clear the interrupt
+key_dir ^= 1; // Toggle key_dir value
+return;
