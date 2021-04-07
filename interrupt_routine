@@ -73,7 +73,7 @@ int main(void)
     
     while (1) {   //program to loop while waiting for interrupts
            //or nothing
-        }
+        
     }
 }
 
@@ -202,12 +202,13 @@ void __attribute__((interrupt)) __cs3_isr_fiq(void)
 ****************************************************************************************/
 void pushbutton_ISR(void)
 {
-volatile int * KEY_ptr = (int *)KEY_BASE;
+	volatile int * KEY_ptr = (int *)KEY_BASE;
+	volatile int * LEDR_ptr= (int*)LEDR_BASE;
     int press;
     press = *(KEY_ptr + 3); // read the pushbutton interrupt register
     *(KEY_ptr + 3) = press; // Clear the interrupt
     
-     *(LEDR_BASE)=key_dir;
+     *(LEDR_ptr)=key_dir;
     key_dir ^= 1; // Toggle key_dir value
     return;
 }
