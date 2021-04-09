@@ -37,6 +37,7 @@ void set_A9_IRQ_stack(void);
 void config_GIC(void);
 
 void config_KEYs(void);
+void config_PS2();
 void enable_A9_interrupts(void);
 
 void __attribute__((interrupt)) __cs3_isr_irq(void);
@@ -48,13 +49,16 @@ void __attribute__((interrupt)) __cs3_isr_dabort(void);
 void __attribute__((interrupt)) __cs3_isr_fiq(void);
 
 void pushbutton_ISR(void);
+void mouse_ISR(void);
 
-//put our own ISR variables here
 /* key_dir and pattern are written by interrupt service routines; we have to
 * declare these as volatile to avoid the compiler caching their values in
 * registers */
 
 volatile int key_dir = 0;
+volatile int x_position = 0;
+volatile int y_position = 0;
+
 //volatile int pattern = 0x0F0F0F0F; // pattern for LED lights
 //extern volatile int key_dir;
 
@@ -62,6 +66,7 @@ int main(void)
 {
     //volatile int * HPS_GPIO1_ptr = (int *)HPS_GPIO1_BASE; // GPIO1 base address
     //volatile int HPS_timer_LEDG = 0x01000000; // value to turn on the HPS green light LEDG
+    volatile int * PS2_ptr = (int *)PS2_BASE;
     
     set_A9_IRQ_stack(); // initialize the stack pointer for IRQ mode
     config_GIC(); // configure the general interrupt controller
@@ -70,8 +75,10 @@ int main(void)
     config_KEYs(); // configure pushbutton KEYs to generate interrupts
     config_PS2();
     enable_A9_interrupts(); // enable interrupts on proc
+   
+   *(PS2_ptr) = 0xFF;	//reset the mouse
     
-    while (1) {   //program to loop while waiting for interrupts
+    while (1) {   //program to loop while waiting for interrupts, could poll mouse here? dep on structure of program
            //or nothing
         
     }
@@ -155,7 +162,7 @@ void __attribute__((interrupt)) __cs3_isr_irq(void)
     
     if (int_ID == KEYS_IRQ) // check if interrupt is from the KEYS
         pushbutton_ISR();
-    else if (int_ID == PS2_IRQ) // check if interrupt is from the PS2 port, add hex interrupt ID later
+    else if (int_ID == PS2_IRQ) // check if interrupt is from the PS2 port, add sw interrupt ID later
         mouse_ISR();	
     else
         while (1)
@@ -219,27 +226,28 @@ void pushbutton_ISR(void)
     return;
 }
 
-void mouse_ISR(void)
+void mouse_ISR(void)	//interrupt triggered w ANY mvmt: clear it every time, and execute ONLY if click (byte1: 0000101, others are moot) (need to store all movement to see total x,y?)
 {
 	volatile int * PS2_ptr = (int *)PS2_BASE;
 	//volatile int * LEDR_ptr= (int*)LEDR_BASE;
 	int PS2_data, data, RAVAIL, RVALID;
-    *(PS2_ptr)=PS2_data;
+    PS2_data = *(PS2_ptr);
     data = PS2_data & 0xFF;
     RAVAIL = PS2_data & 0xFF00;
-    RVALID = PS2_data & 0x8000;	//set this =1 on your own?
+    RVALID = PS2_data & 0x8000;	//set this =1 on your own? nope
     
+    if (RVALID)
     //loop until RAVAIL=0
-    //read data sent from device in lower 8 bits :position in mouses' (port) mem = ravail num on stack
+    //read data sent from device in lower 8 bits :spot in ps2 port mem corresponds to ravail num on stack
     // interrupt (RI) can be cleared by emptying the PS/2 port FIFO AKA read from ps2data reg until RAVAIL is 0 (aka stack is empty)
     					//need rvalid to be 1, what sets this??
 	//write to lower 8 bits of data reg to send commands to the mouse (does this affect the stack?)
     
     //Writing to the PS2_Data register can be used to send a command in
 	//the Data field to the PS/2 device (like what?)
+    //if click, actually do stuff
     
-    
-    return;
+    return;//or we could just poll it
 }
 
 
