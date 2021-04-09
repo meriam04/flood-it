@@ -34,8 +34,11 @@
 #define RESOLUTION_Y 240
 
 /* Constants for animation */
-#define BOX_LEN 2
+#define BOX_LEN 10
 #define NUM_BOXES 8
+#define NUM_ROWS 10
+#define NUM_COLS 10
+#define NUM_COLOURS 6
 
 #define FALSE 0
 #define TRUE 1
@@ -45,6 +48,13 @@
 
 // Begin part3.c code for Lab 7
 volatile int pixel_buffer_start; // global variable
+
+typedef struct {
+    int x_pos;
+    int y_pos;
+    int flood;
+    short int colour;
+} BoxInfo;
 
 // function definitions
 void clear_screen();
@@ -58,33 +68,40 @@ int main(void)
 {
     volatile int * pixel_ctrl_ptr = (int *)PIXEL_BUF_CTRL_BASE;
     //volatile int * previous_pixel_ctrl_ptr; // = pixel_ctrl_ptr;
-    int N = NUM_BOXES;
+    // int N = NUM_BOXES;
+    int rows = RESOLUTION_X;
+    int cols = RESOLUTION_Y;
+    int size = BOX_LEN;
     
     // declare other variables(not shown)
     short int colours[] = {YELLOW, GREEN, BLUE, CYAN, MAGENTA, GREY, PINK, ORANGE, WHITE, RED};
     
-    int x_box[NUM_BOXES]; // stores x locations
-    int y_box[NUM_BOXES]; // stores y locations
+    //declare 2D array of structs
+    BoxInfo **boxes;
+    boxes = (BoxInfo**)malloc(sizeof(BoxInfo*)*(rows/size));
+    for (int i = 0; i < (rows/size); ++i){
+        boxes[i] = (BoxInfo*)malloc(sizeof(BoxInfo) * (cols/size));
+    }
     
-    int colour_box[NUM_BOXES]; // stores current colours
-    
-    int dx[NUM_BOXES]; // stores x direction (-1,1)
-    int dy[NUM_BOXES]; // stores x direction (-1,1)
-    
-    // initialize location and direction of rectangles
-    for (int i = 0; i < NUM_BOXES; ++i){
-        
-        // location in visible screen
-        x_box[i] = rand() % RESOLUTION_X;
-        y_box[i] = rand() % RESOLUTION_Y;
-        
-        // colour randomized from array
-        //colour_box[i] = colours[rand () % 10];
-        colour_box[i] = colours[i];
-        
-        // directions randomized as either -1 or 1
-        dx[i] = ((rand() % 2)*2)-1;
-        dy[i] = ((rand() % 2)*2)-1;
+    // initialize 2D array of structs for the boxes
+    for (int i = 0; i < (rows/size); ++i){
+        for (int j = 0; j < (cols/size); ++j){
+            // create element in array with necessary information
+            BoxInfo element;
+            element.x_pos = i*size;
+            element.y_pos = j*size;
+            // if border, colour should be black, otherwise should be random
+            if (i == 0 || j == 0 || i == (rows/size - 1) || j == (cols/size - 1)){
+                element.colour = BLACK;
+            }
+            else {
+                element.colour = colours[rand() % NUM_COLOURS];
+            }
+            element.flood = FALSE;
+            
+            // put element into array
+            boxes[i][j] = element;
+        }
     }
 
     /* set front pixel buffer to start of FPGA On-chip memory */
@@ -104,22 +121,15 @@ int main(void)
     pixel_buffer_start = *(pixel_ctrl_ptr + 1); // we draw on the back buffer
     
     clear_screen();
-    
-    int prev_first_x[NUM_BOXES], prev_first_y[NUM_BOXES], prev_second_x[NUM_BOXES], prev_second_y[NUM_BOXES];
-    int iteration = 0;
-    
-    for (int i = 0; i < N; ++i){
-        prev_first_x[i] = 0;
-        prev_second_x[i] = 0;
-        prev_first_y[i] = 0;
-        prev_second_y[i] = 0;
-    }
 
     while (1)
     {
         /* Erase any boxes and lines that were drawn in the last iteration */
         // could either redraw all to black or only redraw the ones that were drawn before
-        if (iteration == 0){
+        
+        // probably replace this with only redrawing boxes with colours changed
+        
+        /* if (iteration == 0){
             clear_screen();
         }
         else if (pixel_buffer_start == FPGA_ONCHIP_BASE){
@@ -133,42 +143,16 @@ int main(void)
                 draw_box(prev_second_x[i], prev_second_y[i], BOX_LEN, BLACK);
                 draw_line(prev_second_x[i], prev_second_y[i], prev_second_x[(i+1) % NUM_BOXES], prev_second_y[(i+1) % NUM_BOXES], BLACK);
             }
-        }
+        }*/
         
-        // code for drawing the boxes and lines (not shown)
-        for (int i = 0; i < NUM_BOXES; ++i){
-            // make a 2x2 box
-            draw_box(x_box[i], y_box[i], BOX_LEN, colour_box[i]);
-            
-            // draw line from one box to another
-            draw_line(x_box[i], y_box[i], x_box[(i+1) % NUM_BOXES], y_box[(i+1) % NUM_BOXES], colour_box[i]);
-            
-            // update previous locations to current ones
-            // depending on which buffer is being used
-            if (pixel_buffer_start == FPGA_ONCHIP_BASE){
-                prev_first_x[i] = x_box[i];
-                prev_first_y[i] = y_box[i];
+        // code for drawing the boxes
+        
+        for (int i = 0; i < (rows/size); ++i){
+            for (int j = 0; j < (cols/size); ++j){
+                BoxInfo element = boxes[i][j];
+                draw_box(element.x_pos, element.y_pos, size, element.colour);
             }
-            else{
-                prev_second_x[i] = x_box[i];
-                prev_second_y[i] = y_box[i];
-            }
-
-            // check if at boundary and change direction
-            if (x_box[i] == 0 || ((x_box[i] + BOX_LEN) == (RESOLUTION_X - 1)))
-                dx[i] *= (-1);
-            if (y_box[i] == 0 || ((y_box[i] + BOX_LEN) == (RESOLUTION_Y - 1)))
-                dy[i] *= (-1);
-            
         }
-        
-        for (int i = 0; i < NUM_BOXES; ++i){
-            // updating the locations of boxes
-            x_box[i] += dx[i];
-            y_box[i] += dy[i];
-        }
-        
-        iteration++;
 
         wait_for_vsync(); // swap front and back buffers on VGA vertical sync
         
