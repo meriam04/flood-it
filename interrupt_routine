@@ -61,7 +61,7 @@ volatile int y_position = 0;
 volatile int flag_clicked = 0;
 
 //volatile int pattern = 0x0F0F0F0F; // pattern for LED lights
-//extern volatile int key_dir;
+extern volatile int key_dir;
 
 int main(void)
 {
@@ -80,8 +80,11 @@ int main(void)
    *(PS2_ptr) = 0xFF;	//reset the mouse
     
     while (1) {   //program to loop while waiting for interrupts, could poll mouse here? dep on structure of program
-    	if (flag_clicked){
+    	if (flag_clicked)
+	{
 		//do stuff
+		key_dir ^=1;
+		(LEDR_ptr)* = key_dir;
 		flag_clicked=0;
         }
     }
