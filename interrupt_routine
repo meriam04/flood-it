@@ -87,7 +87,7 @@ void config_KEYs()
 void config_PS2()
 {
 	volatile int* PS2_ptr = (int*) PS2_BASE;
-	*(PS2_ptr + 1) = 0x1;	//or & it with the first bit?? the CE port might be 1 if no error
+	*(PS2_ptr + 1) = 0x1;	//enable interrupts by setting RE bit =1
 }
 
 /*Initialize the banked stack pointer register for IRQ mode*/
@@ -223,21 +223,18 @@ void mouse_ISR(void)
 {
 	volatile int * PS2_ptr = (int *)PS2_BASE;
 	//volatile int * LEDR_ptr= (int*)LEDR_BASE;
-    int control_reg;
-    control_reg = *(PS2_ptr + 1); // read the pushbutton interrupt register, RI/bit 8 will be =1
-    *(PS2_ptr + 1) = press ^ 0x100 ; // Clear the interrupt at RI by flipping bit 8??? or write in 1 somehow? 
-    					//"can be cleared by emptying the PS/2 port FIFO" BUT WHAT IS THAT
-    					//bcuz interrupt flag bit is not in a register on its own?
-    
-    //Writing to the PS2_Data register can be used to send a command in
-	//the Data field to the PS/2 device
-    int PS2_data, data, RAVAIL, RVALID;
+	int PS2_data, data, RAVAIL, RVALID;
     *(PS2_ptr)=PS2_data;
     data = PS2_data & 0xFF;
     RAVAIL = PS2_data & 0xFF00;
-    RVALID = PS2_data & 0x8000;
+    RVALID = PS2_data & 0x8000;	//set this =1 on your own?
+    // interrupt (RI) can be cleared by emptying the PS/2 port FIFO AKA read from ps2data reg until RAVAIL is 0 (aka stack is empty)
+    					//need rvalid to be 1, what sets this??
     
-    key_dir ^= 1; // Toggle key_dir value
+    //Writing to the PS2_Data register can be used to send a command in
+	//the Data field to the PS/2 device (like what?)
+    
+    
     return;
 }
 
