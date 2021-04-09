@@ -228,8 +228,12 @@ void mouse_ISR(void)
     data = PS2_data & 0xFF;
     RAVAIL = PS2_data & 0xFF00;
     RVALID = PS2_data & 0x8000;	//set this =1 on your own?
+    
+    //loop until RAVAIL=0
+    //read data sent from device in lower 8 bits :position in mouses' (port) mem = ravail num on stack
     // interrupt (RI) can be cleared by emptying the PS/2 port FIFO AKA read from ps2data reg until RAVAIL is 0 (aka stack is empty)
     					//need rvalid to be 1, what sets this??
+	//write to lower 8 bits of data reg to send commands to the mouse (does this affect the stack?)
     
     //Writing to the PS2_Data register can be used to send a command in
 	//the Data field to the PS/2 device (like what?)
