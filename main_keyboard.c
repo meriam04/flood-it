@@ -180,12 +180,13 @@ int main(void)
         int erase_colour = board[row][col].colour;*/
         short int erase_colour = colour_from_pos(x_pos, y_pos);
     
+	    //erase cursor
         draw_box(x_pos, y_pos, 3, erase_colour);
         
         display_hex(0,0, num_turns);
         // short int colour = colours[iteration % NUM_COLOURS];
        
-	//mouse implementation
+	//MOUSE IMPLEMENTATION////////////////////////////////////////////////////////
         PS2_data = *(PS2_ptr); // read the Data register in the PS/2 port
         RVALID = PS2_data & 0x8000; // extract the RVALID field
 
@@ -235,6 +236,7 @@ int main(void)
         // check if won
         won_game = check_won_game();
         
+	    //draw cursor
         draw_box(x_cursor % RESOLUTION_X, y_cursor % RESOLUTION_Y, 3, WHITE);
         //printf("iteration: %d, colour: %x\n",iteration, colour);
         
@@ -246,7 +248,7 @@ int main(void)
 	}
     
     // exited while loop means either won or lost game
-    void display_win_lose_hex(won_game);
+    display_win_lose_hex(won_game);
     
     /*if (won_game){
         // display win message
@@ -483,11 +485,13 @@ void display_win_lose_hex(int won_game){
     
     // create an array with the letters for "passed"
     unsigned char passed_table[] = {
-        0b0000000001110011 /*P*/, 0b0000000001110111  /*A*/, 0b0000000001101101 /*S*/, 0b0000000001101101 /*S*/, 0b0000000001111001  /*E*/, 0b0000000001011110 /*d*/
+        0b0000000001110011 /*P*/, 0b0000000001110111  /*A*/, 0b0000000001101101 /*S*/, 
+	    0b0000000001101101 /*S*/, 0b0000000001111001  /*E*/, 0b0000000001011110 /*d*/
     };
     
     unsigned char failed_table[] = {
-        0b0000000001110001  /*F*/, 0b0000000001110111  /*A*/, 0b0000000000110000 /*I*/, 0b0000000000111000 /*L*/, 0b0000000001111001  /*E*/, 0b0000000001011110 /*d*/
+        0b0000000001110001  /*F*/, 0b0000000001110111  /*A*/, 0b0000000000110000 /*I*/, 
+	    0b0000000000111000 /*L*/, 0b0000000001111001  /*E*/, 0b0000000001011110 /*d*/
     };
     
     unsigned char hex_segs[] = {0, 0, 0, 0, 0, 0, 0, 0};
