@@ -109,8 +109,8 @@ int main(void)
                 element.colour = BLACK;
             }
             else {
-                // element.colour = colours[rand() % NUM_COLOURS];
-                element.colour = colours[j % NUM_COLOURS];
+                element.colour = colours[rand() % NUM_COLOURS];
+                // element.colour = colours[j % NUM_COLOURS];
             }
             element.flood = FALSE;
             element.visited = FALSE;
@@ -152,10 +152,10 @@ int main(void)
     {
         /* Erase any boxes and lines that were drawn in the last iteration */
         
-        /*short int colour = colours[iteration % NUM_COLOURS];
-        colour = CYAN;*/
+        short int colour = colours[iteration % NUM_COLOURS];
+       
         // flood_cell(BLUE, &board[1][1]);
-        if (iteration == 0){
+        /*if (iteration == 0){
             apply_colour(BLUE);
         }
         else if (iteration == 1){
@@ -163,7 +163,8 @@ int main(void)
         }
         else {
             apply_colour(MAGENTA);
-        }
+        }*/
+        apply_colour(colour);
         iteration++;
         //printf("iteration: %d, colour: %x\n",iteration, colour);
         
