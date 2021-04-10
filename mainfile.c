@@ -67,16 +67,17 @@ void draw_line(int x1, int y1, int x2, int y2, short int color);
 void plot_pixel(int x, int y, short int line_color);
 void wait_for_vsync();
 void draw_box(int x, int y, int size, short int color);
-// CellInfo* get_neighbours(CellInfo** board, CellInfo* box);
 void apply_colour(short int colour);
 void flood_cell(short int colour, CellInfo* cell);
 
 
-//declare 2D array of structs (global)
+// globals
 CellInfo **board;
 int rows;
 int cols;
 int size;
+int cursor_x = 0;
+int cursor_y = 0;
 
 int main(void)
 {
@@ -176,34 +177,6 @@ int main(void)
     }
 }
 
-// function that returns all neighbouring cells
-/*CellInfo* get_neighbours(CellInfo** board, CellInfo cell){
-    // iterate through all possible directions for neighbours
-    // initialize to maximum number of neighbours and initialize with null
-    CellInfo* neighbours[4] = {NULL, NULL, NULL, NULL};
-    
-    int arrayIndex = 0;
-    for (int i = -1 ; i <= 1; i++){
-        for (int j = -1; j <=1; j++){
-            // if the direction is not diagonal and it is in bounds
-           if ((i == 0 || j == 0) &&
-               (i + cell.row > 0) && (i + cell.row < rows/size) &&
-               (j + cell.col > 0) && (j + cell.col < cols/size)){
-               
-               // add to array the neighbour with this info
-               CellInfo* neighbour;
-               neighbour->row = cell.row + i;
-               neighbour->col = cell.col + j;
-
-               
-               arrayIndex++;
-
-               
-           }
-        }
-    }
-}
-*/
 void apply_colour(short int colour){
     // reinitialize board to have no visited nodes
     for (int i = 0; i < (rows/size); ++i){
