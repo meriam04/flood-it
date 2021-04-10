@@ -198,7 +198,7 @@ int main(void)
 		
 		if ((byte1&& 0x10) != 0){//x is -ve
 			byte2= ~byte2 -1;
-			printf(%x\n,byte2);
+			printf("%x\n",byte2);
 			x_cursor -=byte2;
 		}	
 		else
@@ -206,7 +206,7 @@ int main(void)
 		
 		if ((byte1&& 0x20) !=0){//y is 2s complement
 			byte3= ~byte3 -1;
-			printf(%x\n,byte3);
+			printf("%x\n",byte3);
 			y_cursor -=byte3;
 		}
 		else
