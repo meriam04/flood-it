@@ -133,39 +133,43 @@ int main(void)
     clear_screen(); // pixel_buffer_start points to the pixel buffer
     
     /* set back pixel buffer to start of SDRAM memory */
-    *(pixel_ctrl_ptr + 1) = SDRAM_BASE;
-    pixel_buffer_start = *(pixel_ctrl_ptr + 1); // we draw on the back buffer
+    //*(pixel_ctrl_ptr + 1) = SDRAM_BASE;
+    //pixel_buffer_start = *(pixel_ctrl_ptr + 1); // we draw on the back buffer
     
     clear_screen();
     int iteration = 0;
     printf("iteration: %d\n",iteration);
+    
+    // code for drawing the boxes
+    for (int i = 0; i < (rows/size); ++i){
+        for (int j = 0; j < (cols/size); ++j){
+            CellInfo element =  board[i][j];
+            draw_box(element.x_pos, element.y_pos, size, element.colour);
+        }
+    }
 
     while (1)
     {
         /* Erase any boxes and lines that were drawn in the last iteration */
         
-        // code for drawing the boxes
-        for (int i = 0; i < (rows/size); ++i){
-            for (int j = 0; j < (cols/size); ++j){
-                CellInfo element =  board[i][j];
-                draw_box(element.x_pos, element.y_pos, size, element.colour);
-            }
-        }
         /*short int colour = colours[iteration % NUM_COLOURS];
         colour = CYAN;*/
         // flood_cell(BLUE, &board[1][1]);
         if (iteration == 0){
             apply_colour(BLUE);
         }
-        else {
+        else if (iteration == 1){
             apply_colour(CYAN);
+        }
+        else {
+            apply_colour(MAGENTA);
         }
         iteration++;
         //printf("iteration: %d, colour: %x\n",iteration, colour);
         
         wait_for_vsync(); // swap front and back buffers on VGA vertical sync
         
-        pixel_buffer_start = *(pixel_ctrl_ptr + 1); // new back buffer
+        // pixel_buffer_start = *(pixel_ctrl_ptr + 1); // new back buffer
         
         
     }
@@ -215,6 +219,8 @@ void flood_cell(short int colour, CellInfo* cell){
     cell->colour = colour;
     cell->flood = TRUE;
     printf("flooding cell: %d, %d\n" , cell->row, cell->col);
+    wait_for_vsync();
+    draw_box(cell->x_pos, cell->y_pos, size, colour);
     // iterating through all neighbouring cells
     for (int i = -1 ; i <= 1; i++){
         for (int j = -1; j <=1; j++){
@@ -235,7 +241,6 @@ void flood_cell(short int colour, CellInfo* cell){
         }
     }
 }
-
 
 
 
