@@ -70,6 +70,7 @@ void wait_for_vsync();
 void draw_box(int x, int y, int size, short int color);
 void apply_colour(short int colour);
 void flood_cell(short int colour, CellInfo* cell);
+short int colour_from_pos(int x_pos, int y_pos);
 
 
 // globals
@@ -156,11 +157,24 @@ int main(void)
     
     // PS/2 mouse needs to be reset (must be already plugged in)
      *(PS2_ptr) = 0xFF; // reset
+    
     while (1)
     {
         /* Erase any boxes and lines that were drawn in the last iteration */
+        // bootleg code for translating x-y to colour
+        int x_pos = x_cursor % RESOLUTION_X;
+        int y_pos = y_cursor % RESOLUTION_Y;
+        /*
+        int row = x_pos / BOX_LEN;
+        int col = y_pos / BOX_LEN;
         
-        short int colour = colours[iteration % NUM_COLOURS];
+        int erase_colour = board[row][col].colour;*/
+        short int erase_colour = colour_from_pos(x_pos, y_pos);
+    
+        draw_box(x_pos, y_pos, 3, erase_colour);
+        
+        
+        // short int colour = colours[iteration % NUM_COLOURS];
         
         PS2_data = *(PS2_ptr); // read the Data register in the PS/2 port
         RVALID = PS2_data & 0x8000; // extract the RVALID field
@@ -174,10 +188,14 @@ int main(void)
           x_cursor += byte2;
           y_cursor += byte3;
 			
-          if (byte1 ==9){	//left button press
+          if (byte1 == 9){	//left button press
               //subroutine here
-				apply_colour(colour);
-				iteration++;
+                short int clicked_colour = colour_from_pos(x_cursor % RESOLUTION_X, y_cursor % RESOLUTION_Y);
+              if (clicked_colour != BLACK){
+                  apply_colour(clicked_colour);
+              }
+                
+				// iteration++;
 				printf("xpos: %d, ypos: %d\n",x_cursor, y_cursor);
 	  		}
           if ((byte2 == (char)0xAA) && (byte3 == (char)0x00))
@@ -185,18 +203,8 @@ int main(void)
             *(PS2_ptr) = 0xF4;
         }
         
-        // flood_cell(BLUE, &board[1][1]);
-        /*if (iteration == 0){
-            apply_colour(BLUE);
-        }
-        else if (iteration == 1){
-            apply_colour(CYAN);
-        }
-        else {
-            apply_colour(MAGENTA);
-        }*/
         
-         
+        draw_box(x_cursor % RESOLUTION_X, y_cursor % RESOLUTION_Y, 3, WHITE);
         //printf("iteration: %d, colour: %x\n",iteration, colour);
         
         wait_for_vsync(); // swap front and back buffers on VGA vertical sync
@@ -246,7 +254,14 @@ void flood_cell(short int colour, CellInfo* cell){
     }
 }
 
-
+short int colour_from_pos(int x_pos, int y_pos){
+   
+    int row = x_pos / BOX_LEN;
+    int col = y_pos / BOX_LEN;
+    
+    int return_colour = board[row][col].colour;
+    return return_colour;
+}
 
 void draw_box(int x, int y, int size, short int color){
     
