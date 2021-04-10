@@ -10,6 +10,7 @@
 #define HEX5_HEX4_BASE        0xFF200030
 #define SW_BASE               0xFF200040
 #define KEY_BASE              0xFF200050
+#define PS2_BASE              0xFF200100
 #define TIMER_BASE            0xFF202000
 #define PIXEL_BUF_CTRL_BASE   0xFF203020
 #define CHAR_BUF_CTRL_BASE    0xFF203030
@@ -76,11 +77,15 @@ CellInfo **board;
 int rows;
 int cols;
 int size;
-int cursor_x = 0;
-int cursor_y = 0;
+int x_cursor = 0;
+int y_cursor = 0;
 
 int main(void)
 {
+    volatile int * PS2_ptr = (int *)PS2_BASE;
+    int PS2_data, RVALID;
+    char byte1 = 0, byte2 = 0, byte3 = 0;
+  
     volatile int * pixel_ctrl_ptr = (int *)PIXEL_BUF_CTRL_BASE;
     // int N = NUM_BOXES;
     rows = RESOLUTION_X;
@@ -148,13 +153,34 @@ int main(void)
             draw_box(element.x_pos, element.y_pos, size, element.colour);
         }
     }
-
+    
+    // PS/2 mouse needs to be reset (must be already plugged in)
+     *(PS2_ptr) = 0xFF; // reset
     while (1)
     {
         /* Erase any boxes and lines that were drawn in the last iteration */
         
         short int colour = colours[iteration % NUM_COLOURS];
-       
+        
+        PS2_data = *(PS2_ptr); // read the Data register in the PS/2 port
+        RVALID = PS2_data & 0x8000; // extract the RVALID field
+
+        if (RVALID) {
+          /* shift the next data byte into the display */
+          byte1 = byte2;
+          byte2 = byte3;
+          byte3 = PS2_data & 0xFF;
+
+          x_cursor += byte2;
+          y_cursor += byte3;
+          //if (byte1 & 1)	//left button press
+              //subroutine here
+
+          if ((byte2 == (char)0xAA) && (byte3 == (char)0x00))
+            // mouse inserted; initialize sending of data
+            *(PS2_ptr) = 0xF4;
+        }
+        
         // flood_cell(BLUE, &board[1][1]);
         /*if (iteration == 0){
             apply_colour(BLUE);
@@ -174,7 +200,7 @@ int main(void)
         // pixel_buffer_start = *(pixel_ctrl_ptr + 1); // new back buffer
         
         
-    }
+	}
 }
 
 void apply_colour(short int colour){
@@ -318,3 +344,5 @@ void wait_for_vsync(){
     
 }
 
+
+	
