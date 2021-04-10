@@ -185,7 +185,8 @@ int main(void)
         
         display_hex(0,0, num_turns);
         // short int colour = colours[iteration % NUM_COLOURS];
-        
+       
+	//mouse implementation
         PS2_data = *(PS2_ptr); // read the Data register in the PS/2 port
         RVALID = PS2_data & 0x8000; // extract the RVALID field
 
@@ -194,11 +195,25 @@ int main(void)
             byte1 = byte2;
             byte2 = byte3;
             byte3 = PS2_data & 0xFF;
-
-            x_cursor += byte2;
-            y_cursor += byte3;
+		
+		if ((byte1&& 0x10) != 0){//x is -ve
+			byte2= ~byte2 -1;
+			printf("%x\n",byte2);
+			x_cursor -=byte2;
+		}	
+		else
+			x_cursor += byte2;
+		
+		if ((byte1&& 0x20) !=0){//y is 2s complement
+			byte3= ~byte3 -1;
+			printf("%x\n",byte3);
+			y_cursor -=byte3;
+		}
+		else
+			y_cursor += byte3;
             
-            if (byte1 == 9){    //left button press
+            
+            if (byte1 && 1){    //left button press
                 //subroutine here
                 short int clicked_colour = colour_from_pos(x_cursor % RESOLUTION_X, y_cursor % RESOLUTION_Y);
                 // change colour to selected colour
