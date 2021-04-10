@@ -75,6 +75,9 @@ int check_won_game();
 void display_turns_on_hex(int num_turns);
 // int seven_segment_numbers(int number);
 void display_hex(char b1, char b2, char b3);
+void hex_to_dec(char* b1);
+void display_win_hex();
+void display_lose_hex();
 
 
 // globals
@@ -165,7 +168,7 @@ int main(void)
     // PS/2 mouse needs to be reset (must be already plugged in)
      *(PS2_ptr) = 0xFF; // reset
     
-    while ( (!won_game) || (num_turns >= 0) )
+    while ( (!won_game) && (num_turns >= 0) )
     {
         /* Erase any boxes and lines that were drawn in the last iteration */
         // bootleg code for translating x-y to colour
@@ -180,7 +183,7 @@ int main(void)
     
         draw_box(x_pos, y_pos, 3, erase_colour);
         
-        display_hex(0x0,0x0, num_turns);
+        display_hex(11,12, num_turns);
         // short int colour = colours[iteration % NUM_COLOURS];
         
         PS2_data = *(PS2_ptr); // read the Data register in the PS/2 port
@@ -213,14 +216,9 @@ int main(void)
         }
         
         // check if won
-        printf("going in check won game -- won_game = %d\n", won_game);
         won_game = check_won_game();
         
-        
-        printf("out of check won game -- won_game = %d\n", won_game);
-        if (won_game){
-            printf("won the game i guess\n");
-        }
+        if (won_game)
         
         draw_box(x_cursor % RESOLUTION_X, y_cursor % RESOLUTION_Y, 3, WHITE);
         //printf("iteration: %d, colour: %x\n",iteration, colour);
@@ -283,7 +281,7 @@ void flood_cell(short int colour, CellInfo* cell){
 }
 
 short int colour_from_pos(int x_pos, int y_pos){
-   
+    // make this more accurate later
     int row = x_pos / BOX_LEN;
     int col = y_pos / BOX_LEN;
     
@@ -307,20 +305,6 @@ int check_won_game(){
     
     return TRUE;
 }
-
-void display_turns_on_hex(int num_turns){
-    // first isolate the number of turns into different digits
-    // num_turns should be a 2-digit number
-    
-    int ones_digit = num_turns % 10;
-    int tens_digit = (num_turns - ones_digit)/10;
-    
-    // want to display on the hex so need HEX0-1 addresses
-    
-    /* come back to this when we have seven segment display function */
-}
-
-
 
 void draw_box(int x, int y, int size, short int color){
     
@@ -422,6 +406,7 @@ void wait_for_vsync(){
     
 }
 
+
 /**************************************************************************************
 * Subroutine to show a string of HEX data on the HEX displays
 ****************************************************************************************/
@@ -441,6 +426,11 @@ void display_hex(char b1, char b2, char b3) {
     unsigned char code;
     int i;
     
+    // convert values in shift buffer to decimal here
+    hex_to_dec(&b1);
+    hex_to_dec(&b2);
+    hex_to_dec(&b3);
+    
     shift_buffer = (b1 << 16) | (b2 << 8) | b3;
     
     for (i = 0; i < 6; ++i) {
@@ -455,3 +445,20 @@ void display_hex(char b1, char b2, char b3) {
     *(HEX3_HEX0_ptr) = *(int *)(hex_segs);
     *(HEX5_HEX4_ptr) = *(int *)(hex_segs + 4);
 }
+
+// converts hex number at address passed into decimal number
+void hex_to_dec(char* num_turns){
+    // first isolate the number of turns into different digits
+    // num_turns should be a 2-digit number
+    
+    int ones_digit = (*num_turns) % 10;
+    int tens_digit = ((*num_turns) - ones_digit)/10;
+    
+    int return_num = tens_digit << 4 | ones_digit;
+    *num_turns = return_num;
+    
+    // want to display on the hex so need HEX0-1 addresses
+    
+    /* come back to this when we have seven segment display function */
+}
+
