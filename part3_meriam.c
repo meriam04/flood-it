@@ -34,7 +34,7 @@
 #define RESOLUTION_Y 240
 
 /* Constants for animation */
-#define BOX_LEN 10
+#define BOX_LEN 40
 #define NUM_BOXES 8
 #define NUM_ROWS 10
 #define NUM_COLS 10
@@ -52,9 +52,13 @@ volatile int pixel_buffer_start; // global variable
 typedef struct {
     int x_pos;
     int y_pos;
+    int row;
+    int col;
     int flood;
+    int visited;
     short int colour;
-} BoxInfo;
+} CellInfo;
+
 
 // function definitions
 void clear_screen();
@@ -63,31 +67,41 @@ void draw_line(int x1, int y1, int x2, int y2, short int color);
 void plot_pixel(int x, int y, short int line_color);
 void wait_for_vsync();
 void draw_box(int x, int y, int size, short int color);
+// CellInfo* get_neighbours(CellInfo** board, CellInfo* box);
+void apply_colour(short int colour);
+void flood_cell(short int colour, CellInfo* cell);
+
+
+//declare 2D array of structs (global)
+CellInfo **board;
+int rows;
+int cols;
+int size;
 
 int main(void)
 {
     volatile int * pixel_ctrl_ptr = (int *)PIXEL_BUF_CTRL_BASE;
-    //volatile int * previous_pixel_ctrl_ptr; // = pixel_ctrl_ptr;
     // int N = NUM_BOXES;
-    int rows = RESOLUTION_X;
-    int cols = RESOLUTION_Y;
-    int size = BOX_LEN;
+    rows = RESOLUTION_X;
+    cols = RESOLUTION_Y;
+    size = BOX_LEN;
     
     // declare other variables(not shown)
     short int colours[] = {YELLOW, GREEN, BLUE, CYAN, MAGENTA, GREY, PINK, ORANGE, WHITE, RED};
     
-    //declare 2D array of structs
-    BoxInfo **boxes;
-    boxes = (BoxInfo**)malloc(sizeof(BoxInfo*)*(rows/size));
+    // allocate space for the 2D array (board)
+    board = (CellInfo**)malloc(sizeof(CellInfo*)*(rows/size));
     for (int i = 0; i < (rows/size); ++i){
-        boxes[i] = (BoxInfo*)malloc(sizeof(BoxInfo) * (cols/size));
+         board[i] = (CellInfo*)malloc(sizeof(CellInfo) * (cols/size));
     }
     
     // initialize 2D array of structs for the boxes
     for (int i = 0; i < (rows/size); ++i){
         for (int j = 0; j < (cols/size); ++j){
             // create element in array with necessary information
-            BoxInfo element;
+            CellInfo element;
+            element.row = i;
+            element.col = j;
             element.x_pos = i*size;
             element.y_pos = j*size;
             // if border, colour should be black, otherwise should be random
@@ -95,12 +109,14 @@ int main(void)
                 element.colour = BLACK;
             }
             else {
-                element.colour = colours[rand() % NUM_COLOURS];
+                // element.colour = colours[rand() % NUM_COLOURS];
+                element.colour = colours[j % NUM_COLOURS];
             }
             element.flood = FALSE;
+            element.visited = FALSE;
             
             // put element into array
-            boxes[i][j] = element;
+             board[i][j] = element;
         }
     }
 
@@ -121,39 +137,32 @@ int main(void)
     pixel_buffer_start = *(pixel_ctrl_ptr + 1); // we draw on the back buffer
     
     clear_screen();
+    int iteration = 0;
+    printf("iteration: %d\n",iteration);
 
     while (1)
     {
         /* Erase any boxes and lines that were drawn in the last iteration */
-        // could either redraw all to black or only redraw the ones that were drawn before
-        
-        // probably replace this with only redrawing boxes with colours changed
-        
-        /* if (iteration == 0){
-            clear_screen();
-        }
-        else if (pixel_buffer_start == FPGA_ONCHIP_BASE){
-            for (int i = 0; i < NUM_BOXES; i++){
-                draw_box(prev_first_x[i], prev_first_y[i], BOX_LEN, BLACK);
-                draw_line(prev_first_x[i], prev_first_y[i], prev_first_x[(i+1) % NUM_BOXES], prev_first_y[(i+1) % NUM_BOXES], BLACK);
-            }
-        }
-        else {
-            for (int i = 0; i < NUM_BOXES; i++){
-                draw_box(prev_second_x[i], prev_second_y[i], BOX_LEN, BLACK);
-                draw_line(prev_second_x[i], prev_second_y[i], prev_second_x[(i+1) % NUM_BOXES], prev_second_y[(i+1) % NUM_BOXES], BLACK);
-            }
-        }*/
         
         // code for drawing the boxes
-        
         for (int i = 0; i < (rows/size); ++i){
             for (int j = 0; j < (cols/size); ++j){
-                BoxInfo element = boxes[i][j];
+                CellInfo element =  board[i][j];
                 draw_box(element.x_pos, element.y_pos, size, element.colour);
             }
         }
-
+        /*short int colour = colours[iteration % NUM_COLOURS];
+        colour = CYAN;*/
+        // flood_cell(BLUE, &board[1][1]);
+        if (iteration == 0){
+            apply_colour(BLUE);
+        }
+        else {
+            apply_colour(CYAN);
+        }
+        iteration++;
+        //printf("iteration: %d, colour: %x\n",iteration, colour);
+        
         wait_for_vsync(); // swap front and back buffers on VGA vertical sync
         
         pixel_buffer_start = *(pixel_ctrl_ptr + 1); // new back buffer
@@ -161,6 +170,74 @@ int main(void)
         
     }
 }
+
+// function that returns all neighbouring cells
+/*CellInfo* get_neighbours(CellInfo** board, CellInfo cell){
+    // iterate through all possible directions for neighbours
+    // initialize to maximum number of neighbours and initialize with null
+    CellInfo* neighbours[4] = {NULL, NULL, NULL, NULL};
+    
+    int arrayIndex = 0;
+    for (int i = -1 ; i <= 1; i++){
+        for (int j = -1; j <=1; j++){
+            // if the direction is not diagonal and it is in bounds
+           if ((i == 0 || j == 0) &&
+               (i + cell.row > 0) && (i + cell.row < rows/size) &&
+               (j + cell.col > 0) && (j + cell.col < cols/size)){
+               
+               // add to array the neighbour with this info
+               CellInfo* neighbour;
+               neighbour->row = cell.row + i;
+               neighbour->col = cell.col + j;
+
+               
+               arrayIndex++;
+
+               
+           }
+        }
+    }
+}
+*/
+void apply_colour(short int colour){
+    // reinitialize board to have no visited nodes
+    for (int i = 0; i < (rows/size); ++i){
+        for (int j = 0; j < (cols/size); ++j){
+            board[i][j].visited = FALSE;
+        }
+    }
+    // call flood_cell on first element of board
+    flood_cell(colour, &board[1][1]);
+
+}
+void flood_cell(short int colour, CellInfo* cell){
+    cell->visited = TRUE;
+    cell->colour = colour;
+    cell->flood = TRUE;
+    printf("flooding cell: %d, %d\n" , cell->row, cell->col);
+    // iterating through all neighbouring cells
+    for (int i = -1 ; i <= 1; i++){
+        for (int j = -1; j <=1; j++){
+            // if the direction is not diagonal and it is in bounds
+           if ((i == 0 || j == 0) && !((i == 0) && (j == 0)) &&
+               (i + cell->row > 0) && (i + cell->row < rows/size) &&
+               (j + cell->col > 0) && (j + cell->col < cols/size)){
+               
+               CellInfo* neighbour = &board[i + cell->row][j + cell->col];
+               
+               if (!(neighbour->visited) && (neighbour->colour == colour || neighbour->flood == TRUE)){
+                   // flooding for each of the neighbours
+                   printf("neighbour cell: %d, %d\n" , neighbour->row, neighbour->col);
+                   flood_cell(colour, neighbour);
+                   
+               }
+           }
+        }
+    }
+}
+
+
+
 
 void draw_box(int x, int y, int size, short int color){
     
