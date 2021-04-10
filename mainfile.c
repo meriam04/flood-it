@@ -173,9 +173,13 @@ int main(void)
 
           x_cursor += byte2;
           y_cursor += byte3;
-          //if (byte1 & 1)	//left button press
+			
+          if (byte1 ==9){	//left button press
               //subroutine here
-
+				apply_colour(colour);
+				iteration++;
+				printf("xpos: %d, ypos: %d\n",x_cursor, y_cursor);
+	  		}
           if ((byte2 == (char)0xAA) && (byte3 == (char)0x00))
             // mouse inserted; initialize sending of data
             *(PS2_ptr) = 0xF4;
@@ -191,8 +195,8 @@ int main(void)
         else {
             apply_colour(MAGENTA);
         }*/
-        apply_colour(colour);
-        iteration++;
+        
+         
         //printf("iteration: %d, colour: %x\n",iteration, colour);
         
         wait_for_vsync(); // swap front and back buffers on VGA vertical sync
