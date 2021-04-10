@@ -35,7 +35,7 @@
 #define RESOLUTION_Y 240
 
 /* Constants for animation */
-#define BOX_LEN 40
+#define BOX_LEN 10
 #define NUM_BOXES 8
 #define NUM_ROWS 10
 #define NUM_COLS 10
@@ -76,8 +76,7 @@ void display_turns_on_hex(int num_turns);
 // int seven_segment_numbers(int number);
 void display_hex(char b1, char b2, char b3);
 void hex_to_dec(char* b1);
-void display_win_hex();
-void display_lose_hex();
+void display_win_lose_hex(int won_game);
 
 
 // globals
@@ -236,8 +235,6 @@ int main(void)
         // check if won
         won_game = check_won_game();
         
-        if (won_game)
-        
         draw_box(x_cursor % RESOLUTION_X, y_cursor % RESOLUTION_Y, 3, WHITE);
         //printf("iteration: %d, colour: %x\n",iteration, colour);
         
@@ -249,14 +246,17 @@ int main(void)
 	}
     
     // exited while loop means either won or lost game
-    if (won_game){
+    void display_win_lose_hex(won_game);
+    
+    /*if (won_game){
         // display win message
         printf("won game\n");
+        
     }
     else{
         // display lost message
         printf("lost game :(\n");
-    }
+    }*/
 }
 
 void apply_colour(short int colour){
@@ -320,7 +320,6 @@ int check_won_game(){
             }
         }
     }
-    
     return TRUE;
 }
 
@@ -478,10 +477,17 @@ void hex_to_dec(char* num_turns){
 }
 
 // want to display message "passed"
-void display_win_hex(){
+void display_win_lose_hex(int won_game){
+    volatile int * HEX3_HEX0_ptr = (int *)HEX3_HEX0_BASE;
+    volatile int * HEX5_HEX4_ptr = (int *)HEX5_HEX4_BASE;
+    
     // create an array with the letters for "passed"
     unsigned char passed_table[] = {
-        0b1100111, 0b1110111, 0b1011011, 0b1011011, 0b1001111, 0b0111101
+        0b0000000001110011 /*P*/, 0b0000000001110111  /*A*/, 0b0000000001101101 /*S*/, 0b0000000001101101 /*S*/, 0b0000000001111001  /*E*/, 0b0000000001011110 /*d*/
+    };
+    
+    unsigned char failed_table[] = {
+        0b0000000001110001  /*F*/, 0b0000000001110111  /*A*/, 0b0000000000110000 /*I*/, 0b0000000000111000 /*L*/, 0b0000000001111001  /*E*/, 0b0000000001011110 /*d*/
     };
     
     unsigned char hex_segs[] = {0, 0, 0, 0, 0, 0, 0, 0};
@@ -490,9 +496,19 @@ void display_win_hex(){
     int i;
     
     for (i = 0; i < 6; ++i) {
-        // nibble = shift_buffer & 0x0000000F; // character is in rightmost nibble
-        code = passed_table[nibble];
+        if (won_game){
+            code = passed_table[5 - i];
+        }
+        else{
+            code = failed_table[5 - i];
+        }
         hex_segs[i] = code;
-        shift_buffer = shift_buffer >> 4;
    }
+    // want to display the numbers in order
+    /* drive the hex displays */
+
+    *(HEX3_HEX0_ptr) = *(int *)(hex_segs);
+    *(HEX5_HEX4_ptr) = *(int *)(hex_segs + 4);
 }
+
+
