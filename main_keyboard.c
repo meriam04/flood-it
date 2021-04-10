@@ -167,6 +167,8 @@ int main(void)
     // PS/2 mouse needs to be reset (must be already plugged in)
      *(PS2_ptr) = 0xFF; // reset
     
+	draw_box(x_cursor % RESOLUTION_X, y_cursor % RESOLUTION_Y, 3, WHITE);
+	
     while ( (!won_game) && (num_turns >= 0) )
     {
         /* Erase any boxes and lines that were drawn in the last iteration */
@@ -198,23 +200,6 @@ int main(void)
 		
             x_cursor += byte2;
             y_cursor += byte3;
-            /*
-		if ((byte1&& 0x10) != 0){//x is -ve
-			byte2= ~byte2 -1;
-			printf("%x\n",byte2);
-			x_cursor -=byte2;
-		}	
-		else
-			x_cursor += byte2;
-		
-		if ((byte1&& 0x20) !=0){//y is 2s complement
-			byte3= ~byte3 -1;
-			printf("%x\n",byte3);
-			y_cursor -=byte3;
-		}
-		else
-			y_cursor += byte3;
-       */
             
             if (byte1 && 1){    //left button press
                 //subroutine here
