@@ -71,6 +71,10 @@ void draw_box(int x, int y, int size, short int color);
 void apply_colour(short int colour);
 void flood_cell(short int colour, CellInfo* cell);
 short int colour_from_pos(int x_pos, int y_pos);
+int check_won_game();
+void display_turns_on_hex(int num_turns);
+// int seven_segment_numbers(int number);
+void display_hex(char b1, char b2, char b3);
 
 
 // globals
@@ -86,6 +90,9 @@ int main(void)
     volatile int * PS2_ptr = (int *)PS2_BASE;
     int PS2_data, RVALID;
     char byte1 = 0, byte2 = 0, byte3 = 0;
+    
+    int num_turns = 25;
+    int won_game = FALSE;
   
     volatile int * pixel_ctrl_ptr = (int *)PIXEL_BUF_CTRL_BASE;
     // int N = NUM_BOXES;
@@ -144,9 +151,9 @@ int main(void)
     //pixel_buffer_start = *(pixel_ctrl_ptr + 1); // we draw on the back buffer
     
     clear_screen();
-    int iteration = 0;
+    /*int iteration = 0;
     printf("iteration: %d\n",iteration);
-    
+    */
     // code for drawing the boxes
     for (int i = 0; i < (rows/size); ++i){
         for (int j = 0; j < (cols/size); ++j){
@@ -158,7 +165,7 @@ int main(void)
     // PS/2 mouse needs to be reset (must be already plugged in)
      *(PS2_ptr) = 0xFF; // reset
     
-    while (1)
+    while ( (!won_game) || (num_turns >= 0) )
     {
         /* Erase any boxes and lines that were drawn in the last iteration */
         // bootleg code for translating x-y to colour
@@ -173,36 +180,47 @@ int main(void)
     
         draw_box(x_pos, y_pos, 3, erase_colour);
         
-        
+        display_hex(0x0,0x0, num_turns);
         // short int colour = colours[iteration % NUM_COLOURS];
         
         PS2_data = *(PS2_ptr); // read the Data register in the PS/2 port
         RVALID = PS2_data & 0x8000; // extract the RVALID field
 
         if (RVALID) {
-          /* shift the next data byte into the display */
-          byte1 = byte2;
-          byte2 = byte3;
-          byte3 = PS2_data & 0xFF;
+            /* shift the next data byte into the display */
+            byte1 = byte2;
+            byte2 = byte3;
+            byte3 = PS2_data & 0xFF;
 
-          x_cursor += byte2;
-          y_cursor += byte3;
-			
-          if (byte1 == 9){	//left button press
-              //subroutine here
+            x_cursor += byte2;
+            y_cursor += byte3;
+            
+            if (byte1 == 9){    //left button press
+                //subroutine here
                 short int clicked_colour = colour_from_pos(x_cursor % RESOLUTION_X, y_cursor % RESOLUTION_Y);
-              if (clicked_colour != BLACK){
-                  apply_colour(clicked_colour);
-              }
-                
+                // change colour to selected colour
+                if ((clicked_colour != BLACK) && clicked_colour != board[1][1].colour){
+                    apply_colour(clicked_colour);
+                    num_turns--;
+                }
 				// iteration++;
 				printf("xpos: %d, ypos: %d\n",x_cursor, y_cursor);
 	  		}
-          if ((byte2 == (char)0xAA) && (byte3 == (char)0x00))
-            // mouse inserted; initialize sending of data
-            *(PS2_ptr) = 0xF4;
+            if ((byte2 == (char)0xAA) && (byte3 == (char)0x00)){
+                // mouse inserted; initialize sending of data
+                *(PS2_ptr) = 0xF4;
+            }
         }
         
+        // check if won
+        printf("going in check won game -- won_game = %d\n", won_game);
+        won_game = check_won_game();
+        
+        
+        printf("out of check won game -- won_game = %d\n", won_game);
+        if (won_game){
+            printf("won the game i guess\n");
+        }
         
         draw_box(x_cursor % RESOLUTION_X, y_cursor % RESOLUTION_Y, 3, WHITE);
         //printf("iteration: %d, colour: %x\n",iteration, colour);
@@ -213,6 +231,16 @@ int main(void)
         
         
 	}
+    
+    // exited while loop means either won or lost game
+    if (won_game){
+        // display win message
+        printf("won game\n");
+    }
+    else{
+        // display lost message
+        printf("lost game :(\n");
+    }
 }
 
 void apply_colour(short int colour){
@@ -262,6 +290,37 @@ short int colour_from_pos(int x_pos, int y_pos){
     int return_colour = board[row][col].colour;
     return return_colour;
 }
+
+int check_won_game(){
+    // iterate through game board and check if all same colour
+    short int board_colour = board[1][1].colour;
+    
+    for (int i = 1; i < (rows/size - 1); ++i){
+        for (int j = 1; j < (cols/size - 1); ++j){
+            // if not same colour, did not win game
+            if (board[i][j].colour != board_colour){
+                return FALSE;
+                break;
+            }
+        }
+    }
+    
+    return TRUE;
+}
+
+void display_turns_on_hex(int num_turns){
+    // first isolate the number of turns into different digits
+    // num_turns should be a 2-digit number
+    
+    int ones_digit = num_turns % 10;
+    int tens_digit = (num_turns - ones_digit)/10;
+    
+    // want to display on the hex so need HEX0-1 addresses
+    
+    /* come back to this when we have seven segment display function */
+}
+
+
 
 void draw_box(int x, int y, int size, short int color){
     
@@ -363,5 +422,36 @@ void wait_for_vsync(){
     
 }
 
+/**************************************************************************************
+* Subroutine to show a string of HEX data on the HEX displays
+****************************************************************************************/
+void display_hex(char b1, char b2, char b3) {
+    volatile int * HEX3_HEX0_ptr = (int *)HEX3_HEX0_BASE;
+    volatile int * HEX5_HEX4_ptr = (int *)HEX5_HEX4_BASE;
+    
+    /* SEVEN_SEGMENT_DECODE_TABLE gives the on/off settings for all segments in
+     * a single 7-seg display in the DE1-SoC Computer, for the hex digits 0 - F
+     */
+    
+    unsigned char seven_seg_decode_table[] = {
+        0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07,
+        0x7F, 0x67, 0x77, 0x7C, 0x39, 0x5E, 0x79, 0x71};
+    unsigned char hex_segs[] = {0, 0, 0, 0, 0, 0, 0, 0};
+    unsigned int shift_buffer, nibble;
+    unsigned char code;
+    int i;
+    
+    shift_buffer = (b1 << 16) | (b2 << 8) | b3;
+    
+    for (i = 0; i < 6; ++i) {
+        nibble = shift_buffer & 0x0000000F; // character is in rightmost nibble
+        code = seven_seg_decode_table[nibble];
+        hex_segs[i] = code;
+        shift_buffer = shift_buffer >> 4;
+   }
+  
+    /* drive the hex displays */
 
-	
+    *(HEX3_HEX0_ptr) = *(int *)(hex_segs);
+    *(HEX5_HEX4_ptr) = *(int *)(hex_segs + 4);
+}
