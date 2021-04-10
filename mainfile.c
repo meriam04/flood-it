@@ -183,7 +183,7 @@ int main(void)
     
         draw_box(x_pos, y_pos, 3, erase_colour);
         
-        display_hex(11,12, num_turns);
+        display_hex(0,0, num_turns);
         // short int colour = colours[iteration % NUM_COLOURS];
         
         PS2_data = *(PS2_ptr); // read the Data register in the PS/2 port
@@ -456,9 +456,25 @@ void hex_to_dec(char* num_turns){
     
     int return_num = tens_digit << 4 | ones_digit;
     *num_turns = return_num;
-    
-    // want to display on the hex so need HEX0-1 addresses
-    
-    /* come back to this when we have seven segment display function */
+
 }
 
+// want to display message "passed"
+void display_win_hex(){
+    // create an array with the letters for "passed"
+    unsigned char passed_table[] = {
+        0b1100111, 0b1110111, 0b1011011, 0b1011011, 0b1001111, 0b0111101
+    };
+    
+    unsigned char hex_segs[] = {0, 0, 0, 0, 0, 0, 0, 0};
+    unsigned int shift_buffer, nibble;
+    unsigned char code;
+    int i;
+    
+    for (i = 0; i < 6; ++i) {
+        // nibble = shift_buffer & 0x0000000F; // character is in rightmost nibble
+        code = passed_table[nibble];
+        hex_segs[i] = code;
+        shift_buffer = shift_buffer >> 4;
+   }
+}
