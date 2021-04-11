@@ -826,41 +826,37 @@ void pushbutton_ISR(void)
 void keyboard_ISR(void)	//interrupt triggered w ANY mvmt: clear it every time, and execute ONLY if click (byte1: 0000101, others are moot) (need to store all movement to see total x,y?)
 {
 	volatile int * PS2_ptr = (int *)PS2_BASE;
-	//volatile int * LEDR_ptr= (int*)LEDR_BASE;
+	volatile int * LEDR_ptr= (int*)LEDR_BASE;
 	int PS2_data, PS2_control, RAVAIL, RVALID;
-    RAVAIL = PS2_data & 0xFF00;
-    RVALID = PS2_data & 0x8000;	
     unsigned char byte1 = 0, byte2 = 0;
+	//have to read this first!!! first read below::::
+	PS2_data = *(PS2_ptr);	//reading from ps2data (lower 8 bits are Data) automatically decrements ravail/num on stack=>next byte now in PS2_data
+	RAVAIL = PS2_data & 0xFFFF0000;
+    RVALID = PS2_data & 0x8000;	
 	
-	printf("interruptedkey\n");
-	//key_dir ^=1;
-	//*(LEDR_ptr) = key_dir;
+	printf("interruptedkey\n data %d\n",PS2_data);
+	*(LEDR_ptr) = key_dir;
+	key_dir ^=1;
 	
-	PS2_control= *(PS2_ptr +1);
-	*(PS2_ptr +1) = PS2_control;//was this what i had to do all along?????
-    
 	int flag = *(PS2_ptr +1) & 0x100;
 	if (!flag)
-		printf("interrupt flag cleared after stored1\n");
+		printf("interrupt flag cleared after oneread\n");
 	
     if(RVALID && (RAVAIL==0)){ //RVALID means data is available, ravail=0 means data has stopped being sent (press is over)
-    	PS2_data = *(PS2_ptr);	//reading from ps2data (lower 8 bits are Data) automatically decrements ravail/num on stack=>next byte now in PS2_data
-		byte1 = PS2_data & 0xFF;
-		PS2_data = *(PS2_ptr);
-		
-		flag = *(PS2_ptr +1) & 0x100;
-		if (!flag)
-			printf("interrupt flag cleared after read 2\n");
+    	byte1 = PS2_data & 0xFF;
 		
 		if(byte1==(char)0xF0){//break code (key is done being pressed, read next byte -> break code sends 2 bytes
+			
+			PS2_data = *(PS2_ptr);/////second read (after check for break)
 			RVALID = PS2_data & 0x8000;
-			RAVAIL = PS2_data & 0xFF00;	
+			RAVAIL = PS2_data & 0xFFFF0000; //top 16 BITS!!!
+			
+			flag = *(PS2_ptr +1) & 0x100;
+			if (!flag)
+				printf("interrupt flag cleared after read 2\n char %x\n", byte1);
+		
 			if (RVALID && (RAVAIL==0)){
 				byte2=PS2_data & 0xFF;
-				
-				flag = *(PS2_ptr +1) & 0x100;
-				if (!flag)
-					printf("interrupt flag cleared afterafter\n");
 			   
 				if (byte2==(char)0x1C){
 					printf("move left\n");
