@@ -35,7 +35,7 @@
 #define RESOLUTION_Y 240
 
 /* Constants for animation */
-#define BOX_LEN 10
+#define BOX_LEN 40
 #define NUM_BOXES 8
 #define NUM_ROWS 10
 #define NUM_COLS 10
@@ -73,17 +73,19 @@ void flood_cell(short int colour, CellInfo* cell);
 short int colour_from_pos(int x_pos, int y_pos);
 int check_won_game();
 void display_turns_on_hex(int num_turns);
-// int seven_segment_numbers(int number);
+void set_level(int level);
 void display_hex(char b1, char b2, char b3);
 void hex_to_dec(char* b1);
 void display_win_lose_hex(int won_game);
+
 
 
 // globals
 CellInfo **board;
 int rows;
 int cols;
-int size;
+int size = BOX_LEN; // default length
+int colour_num = NUM_COLOURS; // default colours
 int x_cursor = 0;
 int y_cursor = 0;
 
@@ -96,24 +98,26 @@ int main(void)
     int num_turns = 25;
     int won_game = FALSE;
   
+    // determine level here using the keys
+    set_level(3);
+
+    rows = RESOLUTION_X/size;
+    cols = RESOLUTION_Y/size;
+    
     volatile int * pixel_ctrl_ptr = (int *)PIXEL_BUF_CTRL_BASE;
-    // int N = NUM_BOXES;
-    rows = RESOLUTION_X;
-    cols = RESOLUTION_Y;
-    size = BOX_LEN;
     
     // declare other variables(not shown)
     short int colours[] = {YELLOW, GREEN, BLUE, CYAN, MAGENTA, GREY, PINK, ORANGE, WHITE, RED};
     
     // allocate space for the 2D array (board)
-    board = (CellInfo**)malloc(sizeof(CellInfo*)*(rows/size));
-    for (int i = 0; i < (rows/size); ++i){
-         board[i] = (CellInfo*)malloc(sizeof(CellInfo) * (cols/size));
+    board = (CellInfo**)malloc(sizeof(CellInfo*)*(rows));
+    for (int i = 0; i < (rows); ++i){
+         board[i] = (CellInfo*)malloc(sizeof(CellInfo) * (cols));
     }
     
     // initialize 2D array of structs for the boxes
-    for (int i = 0; i < (rows/size); ++i){
-        for (int j = 0; j < (cols/size); ++j){
+    for (int i = 0; i < (rows); ++i){
+        for (int j = 0; j < (cols); ++j){
             // create element in array with necessary information
             CellInfo element;
             element.row = i;
@@ -121,11 +125,11 @@ int main(void)
             element.x_pos = i*size;
             element.y_pos = j*size;
             // if border, colour should be black, otherwise should be random
-            if (i == 0 || j == 0 || i == (rows/size - 1) || j == (cols/size - 1)){
+            if (i == 0 || j == 0 || i == (rows - 1) || j == (cols - 1)){
                 element.colour = BLACK;
             }
             else {
-                element.colour = colours[rand() % NUM_COLOURS];
+                element.colour = colours[rand() % colour_num];
                 // element.colour = colours[j % NUM_COLOURS];
             }
             element.flood = FALSE;
@@ -157,8 +161,8 @@ int main(void)
     printf("iteration: %d\n",iteration);
     */
     // code for drawing the boxes
-    for (int i = 0; i < (rows/size); ++i){
-        for (int j = 0; j < (cols/size); ++j){
+    for (int i = 0; i < (rows); ++i){
+        for (int j = 0; j < (cols); ++j){
             CellInfo element =  board[i][j];
             draw_box(element.x_pos, element.y_pos, size, element.colour);
         }
@@ -235,21 +239,13 @@ int main(void)
     // exited while loop means either won or lost game
     display_win_lose_hex(won_game);
     
-    /*if (won_game){
-        // display win message
-        printf("won game\n");
-        
-    }
-    else{
-        // display lost message
-        printf("lost game :(\n");
-    }*/
+    // free the board
 }
 
 void apply_colour(short int colour){
     // reinitialize board to have no visited nodes
-    for (int i = 0; i < (rows/size); ++i){
-        for (int j = 0; j < (cols/size); ++j){
+    for (int i = 0; i < (rows); ++i){
+        for (int j = 0; j < (cols); ++j){
             board[i][j].visited = FALSE;
         }
     }
@@ -262,15 +258,15 @@ void flood_cell(short int colour, CellInfo* cell){
     cell->colour = colour;
     cell->flood = TRUE;
     // printf("flooding cell: %d, %d\n" , cell->row, cell->col);
-    wait_for_vsync();
+    wait_for_vsync(); // consider making this a shorter wait time
     draw_box(cell->x_pos, cell->y_pos, size, colour);
     // iterating through all neighbouring cells
     for (int i = -1 ; i <= 1; i++){
         for (int j = -1; j <=1; j++){
             // if the direction is not diagonal and it is in bounds
            if ((i == 0 || j == 0) && !((i == 0) && (j == 0)) &&
-               (i + cell->row > 0) && (i + cell->row < rows/size) &&
-               (j + cell->col > 0) && (j + cell->col < cols/size)){
+               (i + cell->row > 0) && (i + cell->row < rows) &&
+               (j + cell->col > 0) && (j + cell->col < cols)){
                
                CellInfo* neighbour = &board[i + cell->row][j + cell->col];
                
@@ -298,8 +294,8 @@ int check_won_game(){
     // iterate through game board and check if all same colour
     short int board_colour = board[1][1].colour;
     
-    for (int i = 1; i < (rows/size - 1); ++i){
-        for (int j = 1; j < (cols/size - 1); ++j){
+    for (int i = 1; i < (rows - 1); ++i){
+        for (int j = 1; j < (cols - 1); ++j){
             // if not same colour, did not win game
             if (board[i][j].colour != board_colour){
                 return FALSE;
@@ -308,6 +304,41 @@ int check_won_game(){
         }
     }
     return TRUE;
+}
+// sets variables according to level selected
+void set_level(int level){
+    // set box size, number of colours
+    
+    // very beginner
+    if (level == 0){
+        size = 80;
+        colour_num = 3;
+    }
+    // beginner
+    else if (level == 1){
+        size = 40;
+        colour_num = 4;
+    }
+    // intermediate
+    else if (level == 2){
+        size = 20;
+        colour_num = 5;
+    }
+    // hard
+    else if (level == 3){
+        size = 16;
+        colour_num = 6;
+    }
+    // very hard
+    else if (level == 4){
+        size = 10;
+        colour_num = 7;
+    }
+    else { // assume intermediate level
+        size = 20;
+        colour_num = 5;
+        
+    }
 }
 
 void draw_box(int x, int y, int size, short int color){
