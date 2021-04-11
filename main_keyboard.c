@@ -81,9 +81,11 @@ typedef struct {
 // function definitions
 void set_A9_IRQ_stack(void);
 void config_GIC(void);
+void config_interrupt(int N, int CPU_target);
 void config_KEYs(void);
 void config_PS2();
 void enable_A9_interrupts(void);
+void disable_A9_interrupts(void);
 
 void __attribute__((interrupt)) __cs3_isr_irq(void);
 void __attribute__((interrupt)) __cs3_reset(void);      //where are these called?
@@ -94,7 +96,7 @@ void __attribute__((interrupt)) __cs3_isr_dabort(void);
 void __attribute__((interrupt)) __cs3_isr_fiq(void);
 
 void pushbutton_ISR(void);
-void mouse_ISR(void);
+void keyboard_ISR(void);
 
 void clear_screen();
 void swap(int* x, int* y);
@@ -151,9 +153,6 @@ int main(void)
 	//volatile int * PS2_ptr = (int *)PS2_BASE;
    //*(PS2_ptr) = 0xFF;	//reset the mouse
 	
-    int PS2_data, RVALID;
-    char byte1 = 0, byte2 = 0, byte3 = 0;
-    
     //int num_turns = 25;
     //int won_game = FALSE;
   
@@ -670,20 +669,24 @@ void enable_A9_interrupts(void)
     asm("msr cpsr, %[ps]" : : [ps] "r"(status));
 }
 
+void disable_A9_interrupts(void) {
+    int status = 0b11010011;
+    asm("msr cpsr, %[ps]" : : [ps] "r"(status));
+}
+
 /* Configure the Generic Interrupt Controller (GIC)
 */
 void config_GIC(void)	////////////////////////////////////////////////fix this for ps2, not timers, enable ps2 interrupt with cpu
 {
     int address; // used to calculate register addresses MAKE SURE THIS WILL STILL WORK FOR KEYS
-    /* configure the HPS timer interrupt */
-    //*((int *)0xFFFED8C4) = 0x01000000;
-    //*((int *)0xFFFED118) = 0x00000080;
     
     /* configure the FPGA PS2 and KEYs interrupts */
-    *((int *)0xFFFED848) = 0x00000100;	//to specify CPU target (ICDIPTRn) - one byte per interrupt
-    *((int *)0xFFFED84C) = 0x01000000;	//3rd byte for PS2: index=n%4=3 (has to be byte 0,1,2 or 3)
-    *((int *)0xFFFED108) = 0x00008200;	//for key AND ps2 set-enables (ICDISERn) - enable specific interrupts to be forwarded to the CPU interface - one BIT per interrupt
-    
+    //*((int *)0xFFFED848) = 0x00000100;	//to specify CPU target (ICDIPTRn) - one byte per interrupt
+    //*((int *)0xFFFED84C) = 0x01000000;	//3rd byte for PS2: index=n%4=3 (has to be byte 0,1,2 or 3)
+    //*((int *)0xFFFED108) = 0x00008200;	//for key AND ps2 set-enables (ICDISERn) - enable specific interrupts to be forwarded to the CPU interface - one BIT per interrupt
+    config_interrupt(73,1);
+	config_interrupt (79,1);
+	
     // Set Interrupt Priority Mask Register (ICCPMR). Enable interrupts of all
     //priorities
     address = MPCORE_GIC_CPUIF + ICCPMR;
@@ -700,7 +703,29 @@ void config_GIC(void)	////////////////////////////////////////////////fix this f
     *((int *)address) = 1;
 }
 
+void config_interrupt(int N, int CPU_target) {
+    int reg_offset, index, value, address;
+    /* Configure the Interrupt Set-Enable Registers (ICDISERn).
+    reg_offset = (integer_div(N / 32) * 4
+    value = 1 << (N mod 32) */
+    reg_offset = (N >> 3) & 0xFFFFFFFC;
+    index = N & 0x1F;
+    value = 0x1 << index;
+    address = 0xFFFED100 + reg_offset;
+    // Now that we know the register address and value, set the appropriate bit */
+    *(int*)address |= value;
 
+    /* Configure the Interrupt Processor Targets Register (ICDIPTRn)
+    * reg_offset = integer_div(N / 4) * 4
+    * index = N mod 4 */
+    reg_offset = (N & 0xFFFFFFFC);
+    index = N & 0x3;
+    address = 0xFFFED800 + reg_offset + index;
+    /* Now that we know the register address and value, write to (only) the
+    appropriate byte */
+    *(char *)address = (char)CPU_target;
+}
+		    
 //IRQ EXCEPTION HANDLER
 // Define the IRQ exception handler
 void __attribute__((interrupt)) __cs3_isr_irq(void)
@@ -712,7 +737,7 @@ void __attribute__((interrupt)) __cs3_isr_irq(void)
     if (int_ID == KEYS_IRQ) // check if interrupt is from the KEYS
         pushbutton_ISR();
     else if (int_ID == PS2_IRQ) // check if interrupt is from the PS2 port, add sw interrupt ID later
-        mouse_ISR();	
+        keyboard_ISR();	
     else
         while (1)
             ; // if unexpected, then stay here
@@ -772,12 +797,12 @@ void pushbutton_ISR(void)
     int press;
     press = *(KEY_ptr + 3); // read the pushbutton interrupt register
     *(KEY_ptr + 3) = press; // Clear the interrupt
-	printf("key %d was pressed\n",press);
+	printf("key %d was pressed\n",press-1);
 	
-	if(press&0x1)//key0 is pressed
-	else if (press&0x2)//key1
-	else if (press&0x4)//key2
-	else//key3
+	//if(press&0x1)//key0 is pressed
+	//else if (press&0x2)//key1
+	//else if (press&0x4)//key2
+	//else//key3
 	
     
     // printf("in interrupt\n");
@@ -795,39 +820,70 @@ void pushbutton_ISR(void)
     return;
 }
 
-void mouse_ISR(void)	//interrupt triggered w ANY mvmt: clear it every time, and execute ONLY if click (byte1: 0000101, others are moot) (need to store all movement to see total x,y?)
-{/*
+void keyboard_ISR(void)	//interrupt triggered w ANY mvmt: clear it every time, and execute ONLY if click (byte1: 0000101, others are moot) (need to store all movement to see total x,y?)
+{
 	volatile int * PS2_ptr = (int *)PS2_BASE;
 	volatile int * LEDR_ptr= (int*)LEDR_BASE;
-	int PS2_data, RAVAIL, RVALID;
-    //RAVAIL = PS2_data & 0xFF00;
+	int PS2_data, PS2_control, RAVAIL, RVALID;
+    RAVAIL = PS2_data & 0xFF00;
     RVALID = PS2_data & 0x8000;	
-    char byte1 = 0, byte2 = 0, byte3 = 0;
-    
-    while(RVALID){ //or ravail >=0 //data is available
-    	PS2_data = *(PS2_ptr);
-		RVALID = PS2_data & 0x8000;
-
-		byte1 = byte2;
-		byte2 = byte3;
-		byte3 = PS2_data & 0xFF;
-	//reading from ps2data (loer 8 bits are Data) automatically decrements ravail/num on stack=>next byte now in PS2_data
-     }	//interrupt (RI FLAG) now cleared (memory emptied)
-    
-    x_position += byte2;
-    y_position += byte3;
-    if (byte1 ==9){	//left button press
-    	key_dir ^=1;
-	}
+    unsigned char byte1 = 0, byte2 = 0;
+	
+	key_dir ^=1;
 	*(LEDR_ptr) = key_dir;
-	//do we need to detect edge of screen?
+	
+	PS2_control= *(PS2_ptr +1);
+	*(PS2_ptr +1) = PS2_control;//was this what i had to do all along?????
+    
+    if(RVALID && (RAVAIL==0)){ //RVALID means data is available, ravail=0 means data has stopped being sent (press is over)
+    	PS2_data = *(PS2_ptr);	//reading from ps2data (lower 8 bits are Data) automatically decrements ravail/num on stack=>next byte now in PS2_data
+		byte1 = PS2_data & 0xFF;
+		
+		if(byte1==(char)0xF0){//break code (key is done being pressed, read next byte -> break code sends 2 bytes
+			RVALID = PS2_data & 0x8000;
+			RAVAIL = PS2_data & 0xFF00;	
+			
+			if (RVALID && (RAVAIL==0)){
+				byte2=PS2_data & 0xFF;
+				
+				if (byte2==(char)0x1C){
+					printf("move left\n");
+					return;
+				}
+				else if (byte2==(char)0x23){
+					printf("move right\n");
+					return;
+				}	
+				else if (byte2==(char)0x1D){
+					printf("move up\n");
+					return;
+				}	
+				else if (byte2==(char)0x1B){
+					printf("move down\n");
+					return;
+				}	
+				else if (byte2==(char)0x5A){
+					printf("select box\n");
+					return;
+				}	
+				else {
+					printf("invalid key press\n");
+					return;
+				}	
+			}
+		}
+	}
+	
+    
+    	
+	/*do we need to detect edge of screen?
  	if ((byte2 == (char)0xAA) && (byte3 == (char)0x00)){//chck if initialization of mouse is completed
 		// mouse inserted; initialize sending of data //aka mouse hit left corner?
 		*(PS2_ptr) = 0xF4;	//command to initialize data reporting, enables data reporting and resets its movement counters (need for edge of screen??)
-	}
-	//write to lower 8 bits of data reg to send commands to the mouse => check CE to see if error recieving it
+	}*/
+	//write to lower 8 bits of data reg to send commands => check CE to see if error recieving it
 	
-	*/
+	
     return;
 }
 
