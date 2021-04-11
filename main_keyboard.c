@@ -772,6 +772,13 @@ void pushbutton_ISR(void)
     int press;
     press = *(KEY_ptr + 3); // read the pushbutton interrupt register
     *(KEY_ptr + 3) = press; // Clear the interrupt
+	printf("key %d was pressed\n",press);
+	
+	if(press&0x1)//key0 is pressed
+	else if (press&0x2)//key1
+	else if (press&0x4)//key2
+	else//key3
+	
     
     // printf("in interrupt\n");
     // change this part to read from switch and call the level setting function
