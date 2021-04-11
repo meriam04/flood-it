@@ -1,5 +1,22 @@
 /* This files provides address values that exist in the system */
+#define     IRQ_MODE          0b10010
+#define     SVC_MODE          0b10011
 
+#define     INT_ENABLE        0b01000000
+#define     INT_DISABLE       0b11000000
+#define     ENABLE            0x1
+#define     KEYS_IRQ          73    //or 0x49
+#define     PS2_IRQ           79    //dual is 89
+
+#define     MPCORE_GIC_DIST    0xFFFED000 
+#define     MPCORE_GIC_CPUIF    0xFFFEC100
+#define       ICCICR          0x0           //offset of reg from base address of cpu interface
+#define       ICCPMR          0x04
+#define     ICCEOIR           0x10
+#define     ICCIAR            0x0C
+#define       ICDDCR          0x0
+
+#define   A9_ONCHIP_END       0xC803FFFF    //i think?
 #define SDRAM_BASE            0xC0000000
 #define FPGA_ONCHIP_BASE      0xC8000000
 #define FPGA_CHAR_BASE        0xC9000000
@@ -62,6 +79,24 @@ typedef struct {
 
 
 // function definitions
+void set_A9_IRQ_stack(void);
+void config_GIC(void);
+
+void config_KEYs(void);
+void config_PS2();
+void enable_A9_interrupts(void);
+
+void __attribute__((interrupt)) __cs3_isr_irq(void);
+void __attribute__((interrupt)) __cs3_reset(void);      //where are these called?
+void __attribute__((interrupt)) __cs3_isr_undef(void);
+void __attribute__((interrupt)) __cs3_isr_swi(void);
+void __attribute__((interrupt)) __cs3_isr_pabort(void);
+void __attribute__((interrupt)) __cs3_isr_dabort(void);
+void __attribute__((interrupt)) __cs3_isr_fiq(void);
+
+void pushbutton_ISR(void);
+void mouse_ISR(void);
+
 void clear_screen();
 void swap(int* x, int* y);
 void draw_line(int x1, int y1, int x2, int y2, short int color);
@@ -90,9 +125,27 @@ int colour_num = NUM_COLOURS; // default colours
 int x_cursor = 0;
 int y_cursor = 0;
 
+/* key_dir and pattern are written by interrupt service routines; we have to
+* declare these as volatile to avoid the compiler caching their values in
+* registers */
+
+volatile int key_dir = 0;
+volatile int x_position = 0;
+volatile int y_position = 0;
+
 int main(void)
 {
-    volatile int * PS2_ptr = (int *)PS2_BASE;
+	 set_A9_IRQ_stack(); // initialize the stack pointer for IRQ mode
+    config_GIC(); // configure the general interrupt controller
+
+    // enable interrupts on external devices
+    config_KEYs(); // configure pushbutton KEYs to generate interrupts
+    config_PS2();
+    enable_A9_interrupts(); // enable interrupts on proc
+   
+	//volatile int * PS2_ptr = (int *)PS2_BASE;
+   //*(PS2_ptr) = 0xFF;	//reset the mouse
+	
     int PS2_data, RVALID;
     char byte1 = 0, byte2 = 0, byte3 = 0;
     
@@ -169,8 +222,7 @@ int main(void)
         }
     }
     
-    // PS/2 mouse needs to be reset (must be already plugged in)
-     *(PS2_ptr) = 0xFF; // reset
+    
     
 	draw_box(x_cursor % RESOLUTION_X, y_cursor % RESOLUTION_Y, 3, WHITE);
 	
@@ -194,11 +246,11 @@ int main(void)
         // short int colour = colours[iteration % NUM_COLOURS];
        
 	//MOUSE IMPLEMENTATION////////////////////////////////////////////////////////
-        PS2_data = *(PS2_ptr); // read the Data register in the PS/2 port
+        /*PS2_data = *(PS2_ptr); // read the Data register in the PS/2 port
         RVALID = PS2_data & 0x8000; // extract the RVALID field
 
         if (RVALID) {
-            /* shift the next data byte into the display */
+            //shift the next data byte into the display
             byte1 = byte2;
             byte2 = byte3;
             byte3 = PS2_data & 0xFF;
@@ -221,7 +273,7 @@ int main(void)
                 // mouse inserted; initialize sending of data
                 *(PS2_ptr) = 0xF4;
             }
-        }
+        }*/
         
         // check if won
         won_game = check_won_game();
@@ -534,6 +586,190 @@ void display_win_lose_hex(int won_game){
     *(HEX5_HEX4_ptr) = *(int *)(hex_segs + 4);
 }
 
+
+
+
+//* interrupt functions*//
+
+
+/* setup the KEY interrupts in the FPGA */
+void config_KEYs()
+{
+    volatile int * KEY_ptr = (int *)KEY_BASE; // pushbutton KEY address
+    *(KEY_ptr + 2) = 0x3; // enable interrupts for KEY[1]
+}
+
+void config_PS2()
+{
+	volatile int* PS2_ptr = (int*) PS2_BASE;
+	*(PS2_ptr + 1) = 0x1;	//enable interrupts by setting RE bit =1
+}
+
+/*Initialize the banked stack pointer register for IRQ mode*/
+void set_A9_IRQ_stack(void)
+{
+    int stack, mode;
+    stack = A9_ONCHIP_END - 7; // top of A9 onchip memory, aligned to 8 bytes
+    
+    /* change processor to IRQ mode with interrupts disabled */
+    mode = INT_DISABLE | IRQ_MODE;
+    asm("msr cpsr, %[ps]" : : [ps] "r"(mode));
+    /* set banked stack pointer */
+    asm("mov sp, %[ps]" : : [ps] "r"(stack));
+    /* go back to SVC mode before executing subroutine return! */
+    mode = INT_DISABLE | SVC_MODE;
+    asm("msr cpsr, %[ps]" : : [ps] "r"(mode));
+}
+
+/*
+* Turn on interrupts in the ARM processor
+*/
+void enable_A9_interrupts(void)
+{
+    int status = SVC_MODE | INT_ENABLE;
+    asm("msr cpsr, %[ps]" : : [ps] "r"(status));
+}
+
+/* Configure the Generic Interrupt Controller (GIC)
+*/
+void config_GIC(void)	////////////////////////////////////////////////fix this for ps2, not timers, enable ps2 interrupt with cpu
+{
+    int address; // used to calculate register addresses MAKE SURE THIS WILL STILL WORK FOR KEYS
+    /* configure the HPS timer interrupt */
+    //*((int *)0xFFFED8C4) = 0x01000000;
+    //*((int *)0xFFFED118) = 0x00000080;
+    
+    /* configure the FPGA PS2 and KEYs interrupts */
+    *((int *)0xFFFED848) = 0x00000100;	//to specify CPU target (ICDIPTRn) - one byte per interrupt
+    *((int *)0xFFFED84C) = 0x01000000;	//3rd byte for PS2: index=n%4=3 (has to be byte 0,1,2 or 3)
+    *((int *)0xFFFED108) = 0x00008200;	//for key AND ps2 set-enables (ICDISERn) - enable specific interrupts to be forwarded to the CPU interface - one BIT per interrupt
+    
+    // Set Interrupt Priority Mask Register (ICCPMR). Enable interrupts of all
+    //priorities
+    address = MPCORE_GIC_CPUIF + ICCPMR;
+    *((int *)address) = 0xFFFF;
+    
+    // Set CPU Interface Control Register (ICCICR). Enable signaling of
+    // interrupts
+    address = MPCORE_GIC_CPUIF + ICCICR;
+    *((int *)address) = 1;//ENABLE
+    
+    // Configure the Distributor Control Register (ICDDCR) to send pending
+    // interrupts to CPUs
+    address = MPCORE_GIC_DIST + ICDDCR;  
+    *((int *)address) = 1;
+}
+
+
+//IRQ EXCEPTION HANDLER
+// Define the IRQ exception handler
+void __attribute__((interrupt)) __cs3_isr_irq(void)
+{
+    // Read the ICCIAR from the processor interface
+    int address = MPCORE_GIC_CPUIF + ICCIAR;
+    int int_ID = *((int *)address);
+    
+    if (int_ID == KEYS_IRQ) // check if interrupt is from the KEYS
+        pushbutton_ISR();
+    else if (int_ID == PS2_IRQ) // check if interrupt is from the PS2 port, add sw interrupt ID later
+        mouse_ISR();	
+    else
+        while (1)
+            ; // if unexpected, then stay here
+    
+    // Write to the End of Interrupt Register (ICCEOIR)
+    address = MPCORE_GIC_CPUIF + ICCEOIR;
+    *((int *)address) = int_ID;
+    return;
+}
+
+// Define the remaining exception handlers (writes to 
+void __attribute__((interrupt)) __cs3_reset(void)
+{
+    while (1)
+        ;
+}
+void __attribute__((interrupt)) __cs3_isr_undef(void)
+{
+    while (1)
+        ;
+}
+void __attribute__((interrupt)) __cs3_isr_swi(void)
+{
+    while (1)
+        ;
+}
+void __attribute__((interrupt)) __cs3_isr_pabort(void)
+{
+    while (1)
+        ;
+}
+void __attribute__((interrupt)) __cs3_isr_dabort(void)
+{
+    while (1)
+        ;
+}
+void __attribute__((interrupt)) __cs3_isr_fiq(void)
+{
+    while (1)
+        ;
+}           
+            
+            
+
+/***************************************************************************************
+* Pushbutton - Interrupt Service Routine
+*
+* This routine toggles the key_dir variable from 0 <-> 1
+****************************************************************************************/
+void pushbutton_ISR(void)
+{
+	volatile int * KEY_ptr = (int *)KEY_BASE;
+	volatile int * LEDR_ptr= (int*)LEDR_BASE;
+    int press;
+    press = *(KEY_ptr + 3); // read the pushbutton interrupt register
+    *(KEY_ptr + 3) = press; // Clear the interrupt
+    
+     *(LEDR_ptr)=key_dir;
+    key_dir ^= 1; // Toggle key_dir value
+    return;
+}
+
+void mouse_ISR(void)	//interrupt triggered w ANY mvmt: clear it every time, and execute ONLY if click (byte1: 0000101, others are moot) (need to store all movement to see total x,y?)
+{/*
+	volatile int * PS2_ptr = (int *)PS2_BASE;
+	volatile int * LEDR_ptr= (int*)LEDR_BASE;
+	int PS2_data, RAVAIL, RVALID;
+    //RAVAIL = PS2_data & 0xFF00;
+    RVALID = PS2_data & 0x8000;	
+    char byte1 = 0, byte2 = 0, byte3 = 0;
+    
+    while(RVALID){ //or ravail >=0 //data is available
+    	PS2_data = *(PS2_ptr);
+		RVALID = PS2_data & 0x8000;
+
+		byte1 = byte2;
+		byte2 = byte3;
+		byte3 = PS2_data & 0xFF;
+	//reading from ps2data (loer 8 bits are Data) automatically decrements ravail/num on stack=>next byte now in PS2_data
+     }	//interrupt (RI FLAG) now cleared (memory emptied)
+    
+    x_position += byte2;
+    y_position += byte3;
+    if (byte1 ==9){	//left button press
+    	key_dir ^=1;
+	}
+	*(LEDR_ptr) = key_dir;
+	//do we need to detect edge of screen?
+ 	if ((byte2 == (char)0xAA) && (byte3 == (char)0x00)){//chck if initialization of mouse is completed
+		// mouse inserted; initialize sending of data //aka mouse hit left corner?
+		*(PS2_ptr) = 0xF4;	//command to initialize data reporting, enables data reporting and resets its movement counters (need for edge of screen??)
+	}
+	//write to lower 8 bits of data reg to send commands to the mouse => check CE to see if error recieving it
+	
+	*/
+    return;
+}
 // free the board
 void free_board(){
     for (int i = 0; i < rows; i++){
