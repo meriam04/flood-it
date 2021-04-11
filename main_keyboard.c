@@ -1,22 +1,22 @@
 /* This files provides address values that exist in the system */
-#define     IRQ_MODE          0b10010
-#define     SVC_MODE          0b10011
+#define IRQ_MODE              0b10010
+#define SVC_MODE              0b10011
 
-#define     INT_ENABLE        0b01000000
-#define     INT_DISABLE       0b11000000
-#define     ENABLE            0x1
-#define     KEYS_IRQ          73    //or 0x49
-#define     PS2_IRQ           79    //dual is 89
+#define INT_ENABLE            0b01000000
+#define INT_DISABLE           0b11000000
+#define ENABLE                0x1
+#define KEYS_IRQ              73    //or 0x49
+#define PS2_IRQ               79    //dual is 89
 
-#define     MPCORE_GIC_DIST    0xFFFED000 
-#define     MPCORE_GIC_CPUIF    0xFFFEC100
-#define       ICCICR          0x0           //offset of reg from base address of cpu interface
-#define       ICCPMR          0x04
-#define     ICCEOIR           0x10
-#define     ICCIAR            0x0C
-#define       ICDDCR          0x0
+#define MPCORE_GIC_DIST       0xFFFED000
+#define MPCORE_GIC_CPUIF      0xFFFEC100
+#define ICCICR                0x0           //offset of reg from base address of cpu interface
+#define ICCPMR                0x04
+#define ICCEOIR               0x10
+#define ICCIAR                0x0C
+#define ICDDCR                0x0
 
-#define   A9_ONCHIP_END       0xC803FFFF    //i think?
+#define A9_ONCHIP_END         0xC803FFFF    //i think?
 #define SDRAM_BASE            0xC0000000
 #define FPGA_ONCHIP_BASE      0xC8000000
 #define FPGA_CHAR_BASE        0xC9000000
@@ -81,7 +81,6 @@ typedef struct {
 // function definitions
 void set_A9_IRQ_stack(void);
 void config_GIC(void);
-
 void config_KEYs(void);
 void config_PS2();
 void enable_A9_interrupts(void);
@@ -112,7 +111,10 @@ void set_level(int level);
 void display_hex(char b1, char b2, char b3);
 void hex_to_dec(char* b1);
 void display_win_lose_hex(int won_game);
+void initialize_board();
 void free_board();
+void draw_board();
+void reinitialize_board();
 
 
 
@@ -124,6 +126,9 @@ int size = BOX_LEN; // default length
 int colour_num = NUM_COLOURS; // default colours
 int x_cursor = 0;
 int y_cursor = 0;
+short int colours[] = {YELLOW, GREEN, BLUE, CYAN, MAGENTA, GREY, PINK, ORANGE, WHITE, RED};
+int num_turns = 25;
+int won_game = FALSE;
 
 /* key_dir and pattern are written by interrupt service routines; we have to
 * declare these as volatile to avoid the compiler caching their values in
@@ -135,7 +140,7 @@ volatile int y_position = 0;
 
 int main(void)
 {
-	 set_A9_IRQ_stack(); // initialize the stack pointer for IRQ mode
+    set_A9_IRQ_stack(); // initialize the stack pointer for IRQ mode
     config_GIC(); // configure the general interrupt controller
 
     // enable interrupts on external devices
@@ -149,50 +154,19 @@ int main(void)
     int PS2_data, RVALID;
     char byte1 = 0, byte2 = 0, byte3 = 0;
     
-    int num_turns = 25;
-    int won_game = FALSE;
+    //int num_turns = 25;
+    //int won_game = FALSE;
   
     // determine level here using the keys
-    set_level(3);
-
+    // just using default level for now
+    set_level(2);
+    
     rows = RESOLUTION_X/size;
     cols = RESOLUTION_Y/size;
     
     volatile int * pixel_ctrl_ptr = (int *)PIXEL_BUF_CTRL_BASE;
     
-    // declare other variables(not shown)
-    short int colours[] = {YELLOW, GREEN, BLUE, CYAN, MAGENTA, GREY, PINK, ORANGE, WHITE, RED};
-    
-    // allocate space for the 2D array (board)
-    board = (CellInfo**)malloc(sizeof(CellInfo*)*(rows));
-    for (int i = 0; i < (rows); ++i){
-         board[i] = (CellInfo*)malloc(sizeof(CellInfo) * (cols));
-    }
-    
-    // initialize 2D array of structs for the boxes
-    for (int i = 0; i < (rows); ++i){
-        for (int j = 0; j < (cols); ++j){
-            // create element in array with necessary information
-            CellInfo element;
-            element.row = i;
-            element.col = j;
-            element.x_pos = i*size;
-            element.y_pos = j*size;
-            // if border, colour should be black, otherwise should be random
-            if (i == 0 || j == 0 || i == (rows - 1) || j == (cols - 1)){
-                element.colour = BLACK;
-            }
-            else {
-                element.colour = colours[rand() % colour_num];
-                // element.colour = colours[j % NUM_COLOURS];
-            }
-            element.flood = FALSE;
-            element.visited = FALSE;
-            
-            // put element into array
-             board[i][j] = element;
-        }
-    }
+    initialize_board();
 
     /* set front pixel buffer to start of FPGA On-chip memory */
     *(pixel_ctrl_ptr + 1) = FPGA_ONCHIP_BASE; // first store the address in the
@@ -210,18 +184,12 @@ int main(void)
     //*(pixel_ctrl_ptr + 1) = SDRAM_BASE;
     //pixel_buffer_start = *(pixel_ctrl_ptr + 1); // we draw on the back buffer
     
-    clear_screen();
-    /*int iteration = 0;
+    /*clear_screen();
+    int iteration = 0;
     printf("iteration: %d\n",iteration);
     */
-    // code for drawing the boxes
-    for (int i = 0; i < (rows); ++i){
-        for (int j = 0; j < (cols); ++j){
-            CellInfo element =  board[i][j];
-            draw_box(element.x_pos, element.y_pos, size, element.colour);
-        }
-    }
-    
+
+    draw_board();
     
     
 	draw_box(x_cursor % RESOLUTION_X, y_cursor % RESOLUTION_Y, 3, WHITE);
@@ -245,7 +213,7 @@ int main(void)
         display_hex(0,0, num_turns);
         // short int colour = colours[iteration % NUM_COLOURS];
        
-	//MOUSE IMPLEMENTATION////////////////////////////////////////////////////////
+	    //MOUSE IMPLEMENTATION////////////////////////////////////////////////////////
         /*PS2_data = *(PS2_ptr); // read the Data register in the PS/2 port
         RVALID = PS2_data & 0x8000; // extract the RVALID field
 
@@ -295,6 +263,77 @@ int main(void)
     // free the board here probably
     free_board();
     
+}
+
+// allocates space for board
+void initialize_board(){
+    
+    rows = RESOLUTION_X/size;
+    cols = RESOLUTION_Y/size;
+    
+    // allocate space for the 2D array (board)
+    board = (CellInfo**)malloc(sizeof(CellInfo*)*(rows));
+    for (int i = 0; i < (rows); ++i){
+         board[i] = (CellInfo*)malloc(sizeof(CellInfo) * (cols));
+    }
+    
+    // initialize 2D array of structs for the boxes
+    for (int i = 0; i < (rows); ++i){
+        for (int j = 0; j < (cols); ++j){
+            // create element in array with necessary information
+            CellInfo element;
+            element.row = i;
+            element.col = j;
+            element.x_pos = i*size;
+            element.y_pos = j*size;
+            // if border, colour should be black, otherwise should be random
+            if (i == 0 || j == 0 || i == (rows - 1) || j == (cols - 1)){
+                element.colour = BLACK;
+            }
+            else {
+                element.colour = colours[rand() % colour_num];
+                // element.colour = colours[j % NUM_COLOURS];
+            }
+            element.flood = FALSE;
+            element.visited = FALSE;
+            
+            // put element into array
+             board[i][j] = element;
+        }
+    }
+    
+}
+// free the board
+void free_board(){
+    
+    rows = RESOLUTION_X/size;
+    
+    for (int i = 0; i < rows; i++){
+        free(board[i]);
+    }
+    free(board);
+}
+
+void draw_board(){
+    
+    rows = RESOLUTION_X/size;
+    cols = RESOLUTION_Y/size;
+    
+    // code for drawing the boxes
+    for (int i = 0; i < (rows); ++i){
+        for (int j = 0; j < (cols); ++j){
+            CellInfo element =  board[i][j];
+            draw_box(element.x_pos, element.y_pos, size, element.colour);
+        }
+    }
+}
+
+void reinitialize_board(){
+    // free_board();
+    num_turns = 25;
+    won_game = FALSE;
+    initialize_board();
+    draw_board();
 }
 
 void apply_colour(short int colour){
@@ -394,6 +433,7 @@ void set_level(int level){
         colour_num = 5;
         
     }
+    return;
 }
 
 void draw_box(int x, int y, int size, short int color){
@@ -724,14 +764,27 @@ void __attribute__((interrupt)) __cs3_isr_fiq(void)
 ****************************************************************************************/
 void pushbutton_ISR(void)
 {
-	volatile int * KEY_ptr = (int *)KEY_BASE;
-	volatile int * LEDR_ptr= (int*)LEDR_BASE;
+    printf("in pushbutton interrupt\n");
+    volatile int * KEY_ptr = (int *)KEY_BASE;
+	volatile int * LEDR_ptr = (int*)LEDR_BASE;
+    volatile int * SW_ptr = (int*)SW_BASE;
+    
     int press;
     press = *(KEY_ptr + 3); // read the pushbutton interrupt register
     *(KEY_ptr + 3) = press; // Clear the interrupt
     
-     *(LEDR_ptr)=key_dir;
-    key_dir ^= 1; // Toggle key_dir value
+    // printf("in interrupt\n");
+    // change this part to read from switch and call the level setting function
+    int switch_value = *(SW_ptr);
+    // free board before changing size
+    free_board();
+    
+    set_level(switch_value);
+    
+    reinitialize_board();
+    
+     //*(LEDR_ptr)=key_dir;
+     //key_dir ^= 1; // Toggle key_dir value
     return;
 }
 
@@ -770,10 +823,5 @@ void mouse_ISR(void)	//interrupt triggered w ANY mvmt: clear it every time, and 
 	*/
     return;
 }
-// free the board
-void free_board(){
-    for (int i = 0; i < rows; i++){
-        free(board[i]);
-    }
-    free(board);
-}
+
+
