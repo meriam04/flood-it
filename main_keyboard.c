@@ -917,6 +917,26 @@ void keyboard_ISR(void)    //interrupt triggered w ANY mvmt: clear it every time
                     printf("move left\n");
                     // check if selected cell can move left first
                     // then decrememnt column if can
+                    if (selected_cell.row > 1){ // check here not sure about this
+                        erase_selected_cell();
+                        selected_cell.row--;
+                        draw_selected_cell();
+                    }
+                    return;
+                    
+                }
+                else if (byte2==(char)0x23){
+                    printf("move right\n");
+                     
+                    if (selected_cell.row < (rows - 2)){ // check here not sure about this
+                        erase_selected_cell();
+                        selected_cell.row++;
+                        draw_selected_cell();
+                    }
+                    return;
+                }
+                else if (byte2==(char)0x1D){
+                    printf("move up\n");
                     if (selected_cell.col > 1){
                         // redraw current selected cell first then draw new one too
                         erase_selected_cell();
@@ -925,8 +945,8 @@ void keyboard_ISR(void)    //interrupt triggered w ANY mvmt: clear it every time
                     }
                     return;
                 }
-                else if (byte2==(char)0x23){
-                    printf("move right\n");
+                else if (byte2==(char)0x1B){
+                    printf("move down\n");
                     if (selected_cell.col < (cols - 2)){
                         erase_selected_cell();
                         selected_cell.col++;
@@ -934,33 +954,21 @@ void keyboard_ISR(void)    //interrupt triggered w ANY mvmt: clear it every time
                     }
                     
                     return;
-                }
-                else if (byte2==(char)0x1D){
-                    printf("move up\n");
-                    if (selected_cell.row > 1){ // check here not sure about this
-                        erase_selected_cell();
-                        selected_cell.row--;
-                        draw_selected_cell();
-                    }
-                    return;
-                }
-                else if (byte2==(char)0x1B){
-                    printf("move down\n");
-                    if (selected_cell.row < (rows - 2)){ // check here not sure about this
-                        erase_selected_cell();
-                        selected_cell.row++;
-                        draw_selected_cell();
-                    }
-                    return;
+                    
                 }
                 else if (byte2==(char)0x5A){
                     printf("select box\n");
-                    short int clicked_colour = colour_from_pos(x_cursor % RESOLUTION_X, y_cursor % RESOLUTION_Y);
+                    short int clicked_colour = board[selected_cell.row][selected_cell.col].colour;
                     // change colour to selected colour
                     if ((clicked_colour != BLACK) && clicked_colour != board[1][1].colour){
                         apply_colour(clicked_colour);
                         num_turns--;
-                        //draw_board();
+                    }
+                    // if selected cell was flooded, reinitialize it
+                    if (board[selected_cell.row][selected_cell.col].flood){
+                        selected_cell.row = rows - 2;
+                        selected_cell.col = cols - 2;
+                        draw_selected_cell();
                     }
                     return;
                 }
