@@ -85,7 +85,7 @@ void config_interrupt(int N, int CPU_target);
 void config_KEYs(void);
 void config_PS2();
 void enable_A9_interrupts(void);
-void disable_A9_interrupts(void);
+//void disable_A9_interrupts(void);	//if use, disable then enable interrupts (prob unneccesary)
 
 void __attribute__((interrupt)) __cs3_isr_irq(void);
 void __attribute__((interrupt)) __cs3_reset(void);      //where are these called?
@@ -672,10 +672,10 @@ void enable_A9_interrupts(void)
     asm("msr cpsr, %[ps]" : : [ps] "r"(status));
 }
 
-void disable_A9_interrupts(void) {
+/*void disable_A9_interrupts(void) {
     int status = 0b11010011;
     asm("msr cpsr, %[ps]" : : [ps] "r"(status));
-}
+}*/
 
 /* Configure the Generic Interrupt Controller (GIC)
 */
