@@ -628,6 +628,9 @@ void display_win_lose_hex(int won_game){
 
 
 
+
+
+
 //* interrupt functions*//
 
 
@@ -676,9 +679,9 @@ void disable_A9_interrupts(void) {
 
 /* Configure the Generic Interrupt Controller (GIC)
 */
-void config_GIC(void)	////////////////////////////////////////////////fix this for ps2, not timers, enable ps2 interrupt with cpu
+void config_GIC(void)
 {
-    int address; // used to calculate register addresses MAKE SURE THIS WILL STILL WORK FOR KEYS
+    int address; // used to calculate register addresses
     
     /* configure the FPGA PS2 and KEYs interrupts */
     //*((int *)0xFFFED848) = 0x00000100;	//to specify CPU target (ICDIPTRn) - one byte per interrupt
@@ -823,29 +826,42 @@ void pushbutton_ISR(void)
 void keyboard_ISR(void)	//interrupt triggered w ANY mvmt: clear it every time, and execute ONLY if click (byte1: 0000101, others are moot) (need to store all movement to see total x,y?)
 {
 	volatile int * PS2_ptr = (int *)PS2_BASE;
-	volatile int * LEDR_ptr= (int*)LEDR_BASE;
+	//volatile int * LEDR_ptr= (int*)LEDR_BASE;
 	int PS2_data, PS2_control, RAVAIL, RVALID;
     RAVAIL = PS2_data & 0xFF00;
     RVALID = PS2_data & 0x8000;	
     unsigned char byte1 = 0, byte2 = 0;
 	
-	key_dir ^=1;
-	*(LEDR_ptr) = key_dir;
+	printf("interruptedkey\n");
+	//key_dir ^=1;
+	//*(LEDR_ptr) = key_dir;
 	
 	PS2_control= *(PS2_ptr +1);
 	*(PS2_ptr +1) = PS2_control;//was this what i had to do all along?????
     
+	int flag = *(PS2_ptr +1) & 0x100;
+	if (!flag)
+		printf("interrupt flag cleared after stored1\n");
+	
     if(RVALID && (RAVAIL==0)){ //RVALID means data is available, ravail=0 means data has stopped being sent (press is over)
     	PS2_data = *(PS2_ptr);	//reading from ps2data (lower 8 bits are Data) automatically decrements ravail/num on stack=>next byte now in PS2_data
 		byte1 = PS2_data & 0xFF;
+		PS2_data = *(PS2_ptr);
+		
+		flag = *(PS2_ptr +1) & 0x100;
+		if (!flag)
+			printf("interrupt flag cleared after read 2\n");
 		
 		if(byte1==(char)0xF0){//break code (key is done being pressed, read next byte -> break code sends 2 bytes
 			RVALID = PS2_data & 0x8000;
 			RAVAIL = PS2_data & 0xFF00;	
-			
 			if (RVALID && (RAVAIL==0)){
 				byte2=PS2_data & 0xFF;
 				
+				flag = *(PS2_ptr +1) & 0x100;
+				if (!flag)
+					printf("interrupt flag cleared afterafter\n");
+			   
 				if (byte2==(char)0x1C){
 					printf("move left\n");
 					return;
@@ -874,8 +890,10 @@ void keyboard_ISR(void)	//interrupt triggered w ANY mvmt: clear it every time, a
 		}
 	}
 	
+    flag = *(PS2_ptr +1) & 0x100;
+	if (!flag)
+		printf("interrupt flag cleared from none interrupt\n");
     
-    	
 	/*do we need to detect edge of screen?
  	if ((byte2 == (char)0xAA) && (byte3 == (char)0x00)){//chck if initialization of mouse is completed
 		// mouse inserted; initialize sending of data //aka mouse hit left corner?
