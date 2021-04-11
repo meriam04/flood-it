@@ -95,7 +95,7 @@ void __attribute__((interrupt)) __cs3_isr_dabort(void);
 void __attribute__((interrupt)) __cs3_isr_fiq(void);
 
 void pushbutton_ISR(void);
-//void mouse_ISR(void);
+void mouse_ISR(void);
 
 void clear_screen();
 void swap(int* x, int* y);
@@ -132,18 +132,16 @@ volatile int y_position = 0;
 
 int main(void)
 {
-	 volatile int * PS2_ptr = (int *)PS2_BASE;
-    //volatile int * LEDR_ptr = (int *)LEDR_BASE;
-
-    set_A9_IRQ_stack(); // initialize the stack pointer for IRQ mode
+	 set_A9_IRQ_stack(); // initialize the stack pointer for IRQ mode
     config_GIC(); // configure the general interrupt controller
 
     // enable interrupts on external devices
     config_KEYs(); // configure pushbutton KEYs to generate interrupts
-    //config_PS2();
+    config_PS2();
     enable_A9_interrupts(); // enable interrupts on proc
    
-   *(PS2_ptr) = 0xFF;	//reset the mouse
+	//volatile int * PS2_ptr = (int *)PS2_BASE;
+   //*(PS2_ptr) = 0xFF;	//reset the mouse
 	
     int PS2_data, RVALID;
     char byte1 = 0, byte2 = 0, byte3 = 0;
@@ -243,11 +241,11 @@ int main(void)
         // short int colour = colours[iteration % NUM_COLOURS];
        
 	//MOUSE IMPLEMENTATION////////////////////////////////////////////////////////
-        PS2_data = *(PS2_ptr); // read the Data register in the PS/2 port
+        /*PS2_data = *(PS2_ptr); // read the Data register in the PS/2 port
         RVALID = PS2_data & 0x8000; // extract the RVALID field
 
         if (RVALID) {
-            /* shift the next data byte into the display */
+            //shift the next data byte into the display
             byte1 = byte2;
             byte2 = byte3;
             byte3 = PS2_data & 0xFF;
@@ -270,7 +268,7 @@ int main(void)
                 // mouse inserted; initialize sending of data
                 *(PS2_ptr) = 0xF4;
             }
-        }
+        }*/
         
         // check if won
         won_game = check_won_game();
@@ -566,11 +564,11 @@ void config_KEYs()
     *(KEY_ptr + 2) = 0x3; // enable interrupts for KEY[1]
 }
 
-/*void config_PS2()
+void config_PS2()
 {
 	volatile int* PS2_ptr = (int*) PS2_BASE;
 	*(PS2_ptr + 1) = 0x1;	//enable interrupts by setting RE bit =1
-}*/
+}
 
 /*Initialize the banked stack pointer register for IRQ mode*/
 void set_A9_IRQ_stack(void)
@@ -638,8 +636,8 @@ void __attribute__((interrupt)) __cs3_isr_irq(void)
     
     if (int_ID == KEYS_IRQ) // check if interrupt is from the KEYS
         pushbutton_ISR();
-    //else if (int_ID == PS2_IRQ) // check if interrupt is from the PS2 port, add sw interrupt ID later
-    //    mouse_ISR();	
+    else if (int_ID == PS2_IRQ) // check if interrupt is from the PS2 port, add sw interrupt ID later
+        mouse_ISR();	
     else
         while (1)
             ; // if unexpected, then stay here
@@ -698,12 +696,12 @@ void pushbutton_ISR(void)
     *(KEY_ptr + 3) = press; // Clear the interrupt
     
      *(LEDR_ptr)=key_dir;
-    key_dir ^= 1; // Toggle key_dir value (does this var need to be global?)
+    key_dir ^= 1; // Toggle key_dir value
     return;
 }
 
-/*void mouse_ISR(void)	//interrupt triggered w ANY mvmt: clear it every time, and execute ONLY if click (byte1: 0000101, others are moot) (need to store all movement to see total x,y?)
-{
+void mouse_ISR(void)	//interrupt triggered w ANY mvmt: clear it every time, and execute ONLY if click (byte1: 0000101, others are moot) (need to store all movement to see total x,y?)
+{/*
 	volatile int * PS2_ptr = (int *)PS2_BASE;
 	volatile int * LEDR_ptr= (int*)LEDR_BASE;
 	int PS2_data, RAVAIL, RVALID;
@@ -734,6 +732,6 @@ void pushbutton_ISR(void)
 	}
 	//write to lower 8 bits of data reg to send commands to the mouse => check CE to see if error recieving it
 	
-	
+	*/
     return;
-}*/
+}
