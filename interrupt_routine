@@ -1,3 +1,4 @@
+//uncommenting
 #define     IRQ_MODE          0b10010
 #define     SVC_MODE          0b10011
 
@@ -61,14 +62,12 @@ volatile int y_position = 0;
 //volatile int flag_clicked = 0;
 
 //volatile int pattern = 0x0F0F0F0F; // pattern for LED lights
-extern volatile int key_dir;
 
 int main(void)
 {
     //volatile int * HPS_GPIO1_ptr = (int *)HPS_GPIO1_BASE; // GPIO1 base address
     //volatile int HPS_timer_LEDG = 0x01000000; // value to turn on the HPS green light LEDG
-    volatile int * PS2_ptr = (int *)PS2_BASE;
-    volatile int * LEDR_ptr = (int *)LEDR_BASE;
+   
 
     set_A9_IRQ_stack(); // initialize the stack pointer for IRQ mode
     config_GIC(); // configure the general interrupt controller
@@ -78,7 +77,8 @@ int main(void)
     config_PS2();
     enable_A9_interrupts(); // enable interrupts on proc
    
-   *(PS2_ptr) = 0xFF;	//reset the mouse
+	//volatile int * PS2_ptr = (int *)PS2_BASE;
+   //*(PS2_ptr) = 0xFF;	//reset the mouse
     
     while (1) {   //program to loop while waiting for interrupts, could poll mouse here? dep on structure of program
     	
@@ -127,16 +127,21 @@ void enable_A9_interrupts(void)
 */
 void config_GIC(void)	////////////////////////////////////////////////fix this for ps2, not timers, enable ps2 interrupt with cpu
 {
-    int address; // used to calculate register addresses
+    int address; // used to calculate register addresses///////////////////maybe uncomment hps
     /* configure the HPS timer interrupt */
     //*((int *)0xFFFED8C4) = 0x01000000;
     //*((int *)0xFFFED118) = 0x00000080;
     
     /* configure the FPGA PS2 and KEYs interrupts */
+	
     *((int *)0xFFFED848) = 0x00000100;	//to specify CPU target (ICDIPTRn) - one byte per interrupt
     *((int *)0xFFFED84C) = 0x01000000;	//3rd byte for PS2: index=n%4=3 (has to be byte 0,1,2 or 3)
     *((int *)0xFFFED108) = 0x00008200;	//for key AND ps2 set-enables (ICDISERn) - enable specific interrupts to be forwarded to the CPU interface - one BIT per interrupt
     
+	/* configure the FPGA interval timer and KEYs interrupts */
+    //*((int *)0xFFFED848) = 0x00000101;
+    //*((int *)0xFFFED108) = 0x00000300;
+	
     // Set Interrupt Priority Mask Register (ICCPMR). Enable interrupts of all
     //priorities
     address = MPCORE_GIC_CPUIF + ICCPMR;
@@ -224,13 +229,13 @@ void pushbutton_ISR(void)
     *(KEY_ptr + 3) = press; // Clear the interrupt
     
      *(LEDR_ptr)=key_dir;
-    key_dir ^= 1; // Toggle key_dir value (does this var need to be global?)
+    key_dir ^= 1; // Toggle key_dir value
     return;
 }
 
 void mouse_ISR(void)	//interrupt triggered w ANY mvmt: clear it every time, and execute ONLY if click (byte1: 0000101, others are moot) (need to store all movement to see total x,y?)
 {
-	volatile int * PS2_ptr = (int *)PS2_BASE;
+	/*volatile int * PS2_ptr = (int *)PS2_BASE;
 	volatile int * LEDR_ptr= (int*)LEDR_BASE;
 	int PS2_data, RAVAIL, RVALID;
     //RAVAIL = PS2_data & 0xFF00;
@@ -260,6 +265,6 @@ void mouse_ISR(void)	//interrupt triggered w ANY mvmt: clear it every time, and 
 	}
 	//write to lower 8 bits of data reg to send commands to the mouse => check CE to see if error recieving it
 	
-	
+	*/
     return;
-}
+}	
