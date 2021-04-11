@@ -210,7 +210,7 @@ int main(void)
                     num_turns--;
                 }
 				// iteration++;
-				printf("xpos: %d, ypos: %d\n",x_cursor, y_cursor);
+				// printf("xpos: %d, ypos: %d\n",x_cursor, y_cursor);
 	  		}
             if ((byte2 == (char)0xAA) && (byte3 == (char)0x00)){
                 // mouse inserted; initialize sending of data
@@ -261,7 +261,7 @@ void flood_cell(short int colour, CellInfo* cell){
     cell->visited = TRUE;
     cell->colour = colour;
     cell->flood = TRUE;
-    printf("flooding cell: %d, %d\n" , cell->row, cell->col);
+    // printf("flooding cell: %d, %d\n" , cell->row, cell->col);
     wait_for_vsync();
     draw_box(cell->x_pos, cell->y_pos, size, colour);
     // iterating through all neighbouring cells
@@ -276,7 +276,7 @@ void flood_cell(short int colour, CellInfo* cell){
                
                if (!(neighbour->visited) && (neighbour->colour == colour || neighbour->flood == TRUE)){
                    // flooding for each of the neighbours
-                   printf("neighbour cell: %d, %d\n" , neighbour->row, neighbour->col);
+                   // printf("neighbour cell: %d, %d\n" , neighbour->row, neighbour->col);
                    flood_cell(colour, neighbour);
                    
                }
