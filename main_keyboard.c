@@ -125,7 +125,12 @@ void draw_board();
 void reinitialize_board();
 void erase_selected_cell();
 void draw_selected_cell();
+
 void draw_menu();
+
+void wait();
+
+
 
 
 // globals
@@ -176,8 +181,14 @@ int main(void)
     cols = RESOLUTION_Y/size;
     
     volatile int * pixel_ctrl_ptr = (int *)PIXEL_BUF_CTRL_BASE;
+
    
     initialize_board();
+
+    
+    // ensure that neighbours of first of same colour are part of flood already
+    // apply_colour(board[1][1].colour);
+
     
     // initializing selected cell to be the bottom right
     selected_cell.row = rows - 2;
@@ -195,6 +206,9 @@ int main(void)
     
     clear_screen(); // pixel_buffer_start points to the pixel buffer
     
+    initialize_board();
+    apply_colour(board[1][1].colour);
+    
     /* set back pixel buffer to start of SDRAM memory */
     //*(pixel_ctrl_ptr + 1) = SDRAM_BASE;
     //pixel_buffer_start = *(pixel_ctrl_ptr + 1); // we draw on the back buffer
@@ -207,75 +221,16 @@ int main(void)
     //wait for click and then
     draw_board();
     draw_selected_cell();
-    
+    display_hex(0,0, num_turns);
     
     draw_box(x_cursor % RESOLUTION_X, y_cursor % RESOLUTION_Y, 3, WHITE);
     
-    while ( !won_game && (num_turns > 0))
+    // while ( !won_game && (num_turns > 0))
+    while (1)
     {
-        /* Erase any boxes and lines that were drawn in the last iteration */
-        // bootleg code for translating x-y to colour
-        int x_pos = x_cursor % RESOLUTION_X;
-        int y_pos = y_cursor % RESOLUTION_Y;
-        /*
-        int row = x_pos / BOX_LEN;
-        int col = y_pos / BOX_LEN;
-        
-        int erase_colour = board[row][col].colour;*/
-        short int erase_colour = colour_from_pos(x_pos, y_pos);
-    
-        //erase cursor
-        draw_box(x_pos, y_pos, 3, erase_colour);
-        
-        display_hex(0,0, num_turns);
-        // short int colour = colours[iteration % NUM_COLOURS];
-       
-        //MOUSE IMPLEMENTATION////////////////////////////////////////////////////////
-        /*PS2_data = *(PS2_ptr); // read the Data register in the PS/2 port
-        RVALID = PS2_data & 0x8000; // extract the RVALID field
-
-        if (RVALID) {
-            //shift the next data byte into the display
-            byte1 = byte2;
-            byte2 = byte3;
-            byte3 = PS2_data & 0xFF;
-        
-            x_cursor += byte2;
-            y_cursor += byte3;
-            
-            if (byte1 && 1){    //left button press
-                //subroutine here
-                short int clicked_colour = colour_from_pos(x_cursor % RESOLUTION_X, y_cursor % RESOLUTION_Y);
-                // change colour to selected colour
-                if ((clicked_colour != BLACK) && clicked_colour != board[1][1].colour){
-                    apply_colour(clicked_colour);
-                    num_turns--;
-                }
-                // iteration++;
-                // printf("xpos: %d, ypos: %d\n",x_cursor, y_cursor);
-              }
-            if ((byte2 == (char)0xAA) && (byte3 == (char)0x00)){
-                // mouse inserted; initialize sending of data
-                *(PS2_ptr) = 0xF4;
-            }
-        }*/
-        
-        // check if won
-        won_game = check_won_game();
-        
-        //draw cursor
-        draw_box(x_cursor % RESOLUTION_X, y_cursor % RESOLUTION_Y, 3, WHITE);
-        //printf("iteration: %d, colour: %x\n",iteration, colour);
-        
-        wait_for_vsync(); // swap front and back buffers on VGA vertical sync
-        
-        // pixel_buffer_start = *(pixel_ctrl_ptr + 1); // new back buffer
-        
-        
+       // does nothing as it waits for interrupts
     }
     
-    // exited while loop means either won or lost game
-    display_win_lose_hex(won_game);
     
     // free the board here probably
     free_board();
@@ -337,6 +292,10 @@ void initialize_board(){
         }
     }
     
+    // apply flood to first element
+    // short int flood_colour = board[1][1].colour;
+    // apply_colour(flood_colour);
+    
 }
 // free the board
 void free_board(){
@@ -365,14 +324,17 @@ void draw_board(){
 
 void reinitialize_board(){
     // free_board();
-    num_turns = 25;
+    num_turns = 25; // should change this depending on selected level
     won_game = FALSE;
     initialize_board();
+    
+    // ensure that neighbours of first one are also considered flooded initially
+    apply_colour(board[1][1].colour);
     draw_board();
     
+    // reinitialize selected cell to be bottom right
     selected_cell.row = rows - 2;
     selected_cell.col = cols - 2;
-    
     draw_selected_cell();
 }
 
@@ -686,7 +648,7 @@ void display_win_lose_hex(int won_game){
 
 
 
-//* interrupt functions*//
+/**************************************************************************************************************** interrupt functions ************************************************************************************************************/
 
 
 /* setup the KEY interrupts in the FPGA */
@@ -870,7 +832,6 @@ void pushbutton_ISR(void)
     free_board();
     
     set_level(switch_value);
-    
     reinitialize_board();
     
      //*(LEDR_ptr)=key_dir;
@@ -963,6 +924,18 @@ void keyboard_ISR(void)    //interrupt triggered w ANY mvmt: clear it every time
                     if ((clicked_colour != BLACK) && clicked_colour != board[1][1].colour){
                         apply_colour(clicked_colour);
                         num_turns--;
+                        display_hex(0,0, num_turns);
+                        
+                        // check if won game
+                        won_game = check_won_game();
+                        
+                        if (won_game || num_turns <= 0){
+                            // exited while loop means either won or lost game
+                            display_win_lose_hex(won_game);
+                            
+                            // free the board here probably
+                            // free_board();
+                        }
                     }
                     // if selected cell was flooded, reinitialize it
                     if (board[selected_cell.row][selected_cell.col].flood){
