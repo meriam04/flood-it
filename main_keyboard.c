@@ -77,6 +77,7 @@ void set_level(int level);
 void display_hex(char b1, char b2, char b3);
 void hex_to_dec(char* b1);
 void display_win_lose_hex(int won_game);
+void free_board();
 
 
 
@@ -173,7 +174,7 @@ int main(void)
     
 	draw_box(x_cursor % RESOLUTION_X, y_cursor % RESOLUTION_Y, 3, WHITE);
 	
-    while ( (!won_game) && (num_turns >= 0) )
+    while ( !won_game && (num_turns > 0))
     {
         /* Erase any boxes and lines that were drawn in the last iteration */
         // bootleg code for translating x-y to colour
@@ -239,7 +240,9 @@ int main(void)
     // exited while loop means either won or lost game
     display_win_lose_hex(won_game);
     
-    // free the board
+    // free the board here probably
+    free_board();
+    
 }
 
 void apply_colour(short int colour){
@@ -283,8 +286,8 @@ void flood_cell(short int colour, CellInfo* cell){
 
 short int colour_from_pos(int x_pos, int y_pos){
     // make this more accurate later
-    int row = x_pos / BOX_LEN;
-    int col = y_pos / BOX_LEN;
+    int row = x_pos / size;
+    int col = y_pos / size;
     
     int return_colour = board[row][col].colour;
     return return_colour;
@@ -531,4 +534,10 @@ void display_win_lose_hex(int won_game){
     *(HEX5_HEX4_ptr) = *(int *)(hex_segs + 4);
 }
 
-
+// free the board
+void free_board(){
+    for (int i = 0; i < rows; i++){
+        free(board[i]);
+    }
+    free(board);
+}
