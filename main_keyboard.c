@@ -125,7 +125,7 @@ void draw_board();
 void reinitialize_board();
 void erase_selected_cell();
 void draw_selected_cell();
-
+void draw_menu();
 
 
 // globals
@@ -163,6 +163,8 @@ int main(void)
     //volatile int * PS2_ptr = (int *)PS2_BASE;
    //*(PS2_ptr) = 0xFF;    //reset the mouse
     
+    
+    
     //int num_turns = 25;
     //int won_game = FALSE;
   
@@ -174,7 +176,7 @@ int main(void)
     cols = RESOLUTION_Y/size;
     
     volatile int * pixel_ctrl_ptr = (int *)PIXEL_BUF_CTRL_BASE;
-    
+   
     initialize_board();
     
     // initializing selected cell to be the bottom right
@@ -201,7 +203,8 @@ int main(void)
     int iteration = 0;
     printf("iteration: %d\n",iteration);
     */
-
+    draw_menu();
+    //wait for click and then
     draw_board();
     draw_selected_cell();
     
@@ -277,6 +280,24 @@ int main(void)
     // free the board here probably
     free_board();
     
+}
+
+void draw_menu(){
+    //iterate through colors for every cell, plotpixel
+    //plot_pixel(int x, int y, short int line_color); 4 bytes per pixel?
+    char menu_colours[]={};
+    int i=0;//row
+    int j=0;//col
+    int l=0;//row
+    for(int k=0;k<76241;k++){
+        if (i>319){
+            j++;
+            i=0;
+        }
+        if(j>239)
+            break;
+        plot_pixel(i, j, menu_colour[k]);
+        i++;
 }
 
 // allocates space for board
