@@ -58,7 +58,7 @@ void mouse_ISR(void);
 volatile int key_dir = 0;
 volatile int x_position = 0;
 volatile int y_position = 0;
-volatile int flag_clicked = 0;
+//volatile int flag_clicked = 0;
 
 //volatile int pattern = 0x0F0F0F0F; // pattern for LED lights
 extern volatile int key_dir;
@@ -81,13 +81,7 @@ int main(void)
    *(PS2_ptr) = 0xFF;	//reset the mouse
     
     while (1) {   //program to loop while waiting for interrupts, could poll mouse here? dep on structure of program
-    	if (flag_clicked)
-	{
-		//do stuff
-		key_dir ^=1;
-		*(LEDR_ptr) = key_dir;
-		flag_clicked=0;
-        }
+    	
     }
 }
 
@@ -237,7 +231,7 @@ void pushbutton_ISR(void)
 void mouse_ISR(void)	//interrupt triggered w ANY mvmt: clear it every time, and execute ONLY if click (byte1: 0000101, others are moot) (need to store all movement to see total x,y?)
 {
 	volatile int * PS2_ptr = (int *)PS2_BASE;
-	//volatile int * LEDR_ptr= (int*)LEDR_BASE;
+	volatile int * LEDR_ptr= (int*)LEDR_BASE;
 	int PS2_data, RAVAIL, RVALID;
     //RAVAIL = PS2_data & 0xFF00;
     RVALID = PS2_data & 0x8000;	
@@ -245,19 +239,20 @@ void mouse_ISR(void)	//interrupt triggered w ANY mvmt: clear it every time, and 
     
     while(RVALID){ //or ravail >=0 //data is available
     	PS2_data = *(PS2_ptr);
-	RVALID = PS2_data & 0x8000;
-	
-	byte1 = byte2;
-    byte2 = byte3;
-    byte3 = PS2_data & 0xFF;
+		RVALID = PS2_data & 0x8000;
+
+		byte1 = byte2;
+		byte2 = byte3;
+		byte3 = PS2_data & 0xFF;
 	//reading from ps2data (loer 8 bits are Data) automatically decrements ravail/num on stack=>next byte now in PS2_data
      }	//interrupt (RI FLAG) now cleared (memory emptied)
     
     x_position += byte2;
     y_position += byte3;
-    if (byte1 & 1)	//left button press
-    	flag_clicked=1;
- 	
+    if (byte1 ==9){	//left button press
+    	key_dir ^=1;
+	}
+	*(LEDR_ptr) = key_dir;
 	//do we need to detect edge of screen?
  	if ((byte2 == (char)0xAA) && (byte3 == (char)0x00)){//chck if initialization of mouse is completed
 		// mouse inserted; initialize sending of data //aka mouse hit left corner?
@@ -266,5 +261,5 @@ void mouse_ISR(void)	//interrupt triggered w ANY mvmt: clear it every time, and 
 	//write to lower 8 bits of data reg to send commands to the mouse => check CE to see if error recieving it
 	
 	
-    return;//or we could just poll it with while 1 in main
+    return;
 }
