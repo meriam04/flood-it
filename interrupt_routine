@@ -138,9 +138,10 @@ void config_GIC(void)	////////////////////////////////////////////////fix this f
     //*((int *)0xFFFED8C4) = 0x01000000;
     //*((int *)0xFFFED118) = 0x00000080;
     
-    /* configure the FPGA interval timer and KEYs interrupts */
-    //*((int *)0xFFFED848) = 0x00000101;
-    *((int *)0xFFFED108) = 0x00000300;	//for key
+    /* configure the FPGA PS2 and KEYs interrupts */
+    *((int *)0xFFFED848) = 0x00000100;	//to specify CPU target (ICDIPTRn) - one byte per interrupt
+    *((int *)0xFFFED84C) = 0x01000000;	//3rd byte for PS2: index=n%4=3 (has to be byte 0,1,2 or 3)
+    *((int *)0xFFFED108) = 0x00008200;	//for key AND ps2 set-enables (ICDISERn) - enable specific interrupts to be forwarded to the CPU interface - one BIT per interrupt
     
     // Set Interrupt Priority Mask Register (ICCPMR). Enable interrupts of all
     //priorities
