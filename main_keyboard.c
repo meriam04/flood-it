@@ -203,7 +203,7 @@ int main(void)
     int iteration = 0;
     printf("iteration: %d\n",iteration);
     */
-    draw_menu();
+    //draw_menu();
     //wait for click and then
     draw_board();
     draw_selected_cell();
@@ -282,7 +282,7 @@ int main(void)
     
 }
 
-void draw_menu(){
+/*void draw_menu(){
     //iterate through colors for every cell, plotpixel
     //plot_pixel(int x, int y, short int line_color); 4 bytes per pixel?
     char menu_colours[]={};
@@ -298,7 +298,7 @@ void draw_menu(){
             break;
         plot_pixel(i, j, menu_colour[k]);
         i++;
-}
+}*/
 
 // allocates space for board
 void initialize_board(){
