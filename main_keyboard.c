@@ -819,7 +819,7 @@ void keyboard_ISR(void)    //interrupt triggered w ANY mvmt: clear it every time
     RVALID = PS2_data & 0x8000;
     
   //  printf("interruptedkey data %d\n",PS2_data);
-	//printf("RVALIDbyte1= %d, RAVAIL= %d\n",RVALID,RAVAIL);
+	printf("RVALIDbyte1= %d, RAVAIL= %d\n",RVALID,RAVAIL);
     //*(LEDR_ptr) = key_dir;
     //key_dir ^=1;
     
@@ -829,62 +829,63 @@ void keyboard_ISR(void)    //interrupt triggered w ANY mvmt: clear it every time
     
     if(RVALID && (RAVAIL==0)){ //RVALID means data is available, ravail=0 means data has stopped being sent (press is over)
         byte1 = PS2_data & 0xFF;
-        // printf("read 1 approved; byte1= %x\n",byte1);
+        printf("read 1 approved; byte1= %x\n",byte1);
         
 		if((byte1==(char)0xE0) ||(byte1==(char)0xF0)){//break code (key is done being pressed, read next byte -> break code sends 2 bytes
 		    PS2_data = *(PS2_ptr);/////second read (after check for break)
 		    RVALID = PS2_data & 0x8000;
 		    RAVAIL = PS2_data & 0xFFFF0000; //top 16 BITS!!!
-		    // printf("RVALIDbyte2= %d, RAVAIL= %d\n",RVALID,RAVAIL);
+		    printf("RVALIDbyte2= %d, RAVAIL= %d\n",RVALID,RAVAIL);
 
 			//flag = *(PS2_ptr +1) & 0x100;
 		    	//if (!flag)
 				//printf("interrupt flag cleared after read 2\n");
-		    if (RVALID && ((RAVAIL==0)||(RAVAIL==65536))){//additional ravails for larger byte packets
+		    if (RVALID){//additional ravails for larger byte packets
 			byte2=PS2_data & 0xFF;
-			// printf("read 2 approved; byte2= %x\n",byte2);
+			printf("read 2 approved; byte2= %x\n",byte2);
 
 			if (byte2==(char)0x5A){
 			    printf("select box\n");
 			    short int clicked_colour = board[selected_cell.row][selected_cell.col].colour;
 			    // change colour to selected colour
 			    if ((clicked_colour != BLACK) && clicked_colour != board[1][1].colour){
-                    apply_colour(clicked_colour);
-                    num_turns--;
-                    display_hex(0,0, num_turns);
+				apply_colour(clicked_colour);
+				num_turns--;
+				display_hex(0,0, num_turns);
 
-                    // check if won game
-                    won_game = check_won_game();
+				// check if won game
+				won_game = check_won_game();
 
 				if (won_game || num_turns <= 0){
 				    // exited while loop means either won or lost game
 				    display_win_lose_hex(won_game);
-                    draw_endscreen();
 
 				    // free the board here probably
 				    // free_board();
 				}
 			    }
 			    // if selected cell was flooded, reinitialize it
-			    if (!won_game && num_turns > 0 && board[selected_cell.row][selected_cell.col].flood){
-                    selected_cell.row = rows - 2;
-                    selected_cell.col = cols - 2;
-                    draw_selected_cell();
+			    if (board[selected_cell.row][selected_cell.col].flood){
+				selected_cell.row = rows - 2;
+				selected_cell.col = cols - 2;
+				draw_selected_cell();
 			    }
 			    return;
 			}
+					//////////////////////////////arrow key was pressed
 			else if(byte2==(char)0xF0){//break code (key is done being pressed, read next byte -> break code sends 2 bytes
 				PS2_data = *(PS2_ptr);/////third read (after check for break)
 				RVALID = PS2_data & 0x8000;
 				RAVAIL = PS2_data & 0xFFFF0000; //top 16 BITS!!!
-
+				printf("RVALIDbyte3= %d, RAVAIL= %d\n",RVALID,RAVAIL);
 				//flag = *(PS2_ptr +1) & 0x100;
 				//if (!flag)
 					//printf("interrupt flag cleared after read 3\n char %x\n", byte1);
 
 				if (RVALID && (RAVAIL==0)){
 					byte3=PS2_data & 0xFF;
-
+					printf("read 3 approved; byte3= %x\n",byte3);
+					/////////////////////////////////see WHICH arrow key was pressed
 					if (byte3==(char)0x6B){
 						printf("move left\n");
 						// check if selected cell can move left first
@@ -928,10 +929,10 @@ void keyboard_ISR(void)    //interrupt triggered w ANY mvmt: clear it every time
 						return;
 
 					}
-					/*else {
+					else {
 						printf("invalid key press\n");
 						return;
-					}*/
+					}
 				}
 			}//else//FOR byte2 mismatch
 				//printf("invalid key press whoa\n");
