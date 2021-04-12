@@ -183,8 +183,8 @@ int main(void)
     
 
 	draw_title();
-    // wait();
-    // draw_menu();
+    wait();
+    draw_menu();
     
     rows = RESOLUTION_X/size;
     cols = RESOLUTION_Y/size;
