@@ -313,7 +313,7 @@ void apply_colour(short int colour){
 void animate_flood(short int colour){
     // want to animate the flood in a diagonal from board[1][1] to rows - 1
     int sum = 2; // bc starts at board[1][1]
-    int max_sum = (rows - 2) + (cols - 2);
+    int max_sum = (rows - 1) + (cols - 1);
     int animated = FALSE;
     while (sum < max_sum){
         animated = FALSE;
@@ -886,6 +886,7 @@ void keyboard_ISR(void)    //interrupt triggered w ANY mvmt: clear it every time
                     if (won_game || num_turns <= 0){
                         // exited while loop means either won or lost game
                         display_win_lose_hex(won_game);
+                        wait_for_vsync();
                         draw_endscreen();
 
                         // free the board here probably
