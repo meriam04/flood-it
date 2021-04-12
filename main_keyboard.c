@@ -36,9 +36,9 @@
 #define WHITE 0xFFFF
 #define YELLOW 0xFFE0
 #define RED 0xF800
-#define GREEN 0x07E0
+#define GREEN 0x07D0 /*07E0*/
 #define BLUE 0x001F
-#define CYAN 0x07FF
+#define CYAN 0x06FF /*07FF*/
 #define MAGENTA 0xF81F
 #define GREY 0xC618
 #define PINK 0xFC18
@@ -111,6 +111,7 @@ void plot_pixel(int x, int y, short int line_color);
 void wait_for_vsync();
 void draw_box(int x, int y, int size, short int color);
 void apply_colour(short int colour);
+void animate_flood(short int colour);
 void flood_cell(short int colour, CellInfo* cell);
 short int colour_from_pos(int x_pos, int y_pos);
 int check_won_game();
@@ -142,6 +143,7 @@ int colour_num = NUM_COLOURS; // default colours
 int x_cursor = 0;
 int y_cursor = 0;
 short int colours[] = {YELLOW, GREEN, BLUE, CYAN, MAGENTA, ORANGE, GREY, PINK, WHITE, RED};
+//short int dark_colours[] = {YELLOW, GREEN, BLUE, CYAN, MAGENTA, ORANGE, GREY, PINK, WHITE, RED};
 int num_turns = 25;
 int won_game = FALSE;
 
@@ -301,15 +303,36 @@ void apply_colour(short int colour){
     }
     // call flood_cell on first element of board
     flood_cell(colour, &board[1][1]);
+    animate_flood(colour);
 
+}
+void animate_flood(short int colour){
+    // want to animate the flood in a diagonal from board[1][1] to rows - 2
+    // would work better if it was a perfect square
+    int sum = 2;
+    int max_sum = (rows - 2) + (cols - 2);
+    while (sum < max_sum){
+        for (int i = 1; (i < (sum) && (i < (rows - 1))); i++){
+            for (int j = 1; (j < (sum) && (j < (cols - 1))); j++){
+                CellInfo cell = board[i][j];
+                if ((i + j == sum) && cell.flood){
+                    draw_box(cell.x_pos, cell.y_pos, size, colour);
+                }
+            }
+        }
+        wait_for_vsync();
+        sum++;
+        
+    }
 }
 void flood_cell(short int colour, CellInfo* cell){
     cell->visited = TRUE;
     cell->colour = colour;
     cell->flood = TRUE;
     // printf("flooding cell: %d, %d\n" , cell->row, cell->col);
-    wait_for_vsync(); // consider making this a shorter wait time
-    draw_box(cell->x_pos, cell->y_pos, size, colour);
+    // wait_for_vsync(); // consider making this a shorter wait time
+    
+    // draw_box(cell->x_pos, cell->y_pos, size, colour);
     // iterating through all neighbouring cells
     for (int i = -1 ; i <= 1; i++){
         for (int j = -1; j <=1; j++){
@@ -349,7 +372,6 @@ int check_won_game(){
             // if not same colour, did not win game
             if (board[i][j].colour != board_colour){
                 return FALSE;
-                break;
             }
         }
     }
@@ -359,7 +381,7 @@ int check_won_game(){
 void set_level(int level){
     // set box size, number of colours
     
-    // very beginner
+    // very beginner, to test colour change
     if (level == 0){
         size = 80;
         colour_num = 9;
@@ -368,13 +390,13 @@ void set_level(int level){
     // beginner
     else if (level == 1){
         size = 40;
-        colour_num = 4;
+        colour_num = 5;
         num_turns = 10;
     }
     // intermediate
     else if (level == 2){
         size = 20;
-        colour_num = 5;
+        colour_num = 6;
         num_turns = 25;
     }
     // hard
@@ -391,7 +413,7 @@ void set_level(int level){
     }
     else { // assume intermediate level
         size = 20;
-        colour_num = 5;
+        colour_num = 6;
         num_turns = 25;
     }
     return;
