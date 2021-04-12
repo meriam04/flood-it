@@ -310,6 +310,8 @@ void reinitialize_board(){
     selected_cell.row = rows - 2;
     selected_cell.col = cols - 2;
     draw_selected_cell();
+    
+    display_hex(0,0,num_turns);
 }
 
 void apply_colour(short int colour){
@@ -422,6 +424,8 @@ void draw_selected_cell(){
     CellInfo current_cell = board[selected_cell.row][selected_cell.col];
     // draw outline first
     draw_box(current_cell.x_pos, current_cell.y_pos, size, WHITE);
+    // draw black
+    draw_box(current_cell.x_pos + 1, current_cell.y_pos + 1, size - 2, BLACK);
     // then draw actual box
     draw_box(current_cell.x_pos + OUTLINE, current_cell.y_pos + OUTLINE, size - 2*OUTLINE, current_cell.colour);
 }
@@ -790,7 +794,7 @@ void pushbutton_ISR(void)
 {
     printf("in pushbutton interrupt\n");
     volatile int * KEY_ptr = (int *)KEY_BASE;
-    volatile int * LEDR_ptr = (int*)LEDR_BASE;
+    // volatile int * LEDR_ptr = (int*)LEDR_BASE;
     volatile int * SW_ptr = (int*)SW_BASE;
     
     int press;
