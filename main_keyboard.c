@@ -128,11 +128,9 @@ void draw_selected_cell();
 
 void draw_menu();
 void draw_endscreen();
-//void draw_title();
+void draw_title();
 
 void wait();
-
-
 
 
 // globals
@@ -183,16 +181,9 @@ int main(void)
     
 
 	draw_title();
-	int delay_count=2000000;
-	while(delay_count){
-		delay_count--;
-	}
+    wait();
     draw_menu();
     
-  
-    // determine level here using the keys
-    // just using default level for now
-    // set_level(2);
     
     rows = RESOLUTION_X/size;
     cols = RESOLUTION_Y/size;
@@ -522,6 +513,12 @@ void wait_for_vsync(){
     
 }
 
+void wait(){
+    int delay_count=2000000;
+    while(delay_count){
+        delay_count--;
+    }
+}
 
 /**************************************************************************************
 * Subroutine to show a string of HEX data on the HEX displays
@@ -592,7 +589,6 @@ void display_win_lose_hex(int won_game){
     };
     
     unsigned char hex_segs[] = {0, 0, 0, 0, 0, 0, 0, 0};
-    unsigned int shift_buffer, nibble;
     unsigned char code;
     int i;
     
@@ -833,32 +829,32 @@ void keyboard_ISR(void)    //interrupt triggered w ANY mvmt: clear it every time
     
     if(RVALID && (RAVAIL==0)){ //RVALID means data is available, ravail=0 means data has stopped being sent (press is over)
         byte1 = PS2_data & 0xFF;
-        printf("read 1 approved; byte1= %x\n",byte1);
+        // printf("read 1 approved; byte1= %x\n",byte1);
         
 		if((byte1==(char)0xE0) ||(byte1==(char)0xF0)){//break code (key is done being pressed, read next byte -> break code sends 2 bytes
 		    PS2_data = *(PS2_ptr);/////second read (after check for break)
 		    RVALID = PS2_data & 0x8000;
 		    RAVAIL = PS2_data & 0xFFFF0000; //top 16 BITS!!!
-		    printf("RVALIDbyte2= %d, RAVAIL= %d\n",RVALID,RAVAIL);
+		    // printf("RVALIDbyte2= %d, RAVAIL= %d\n",RVALID,RAVAIL);
 
 			//flag = *(PS2_ptr +1) & 0x100;
 		    	//if (!flag)
 				//printf("interrupt flag cleared after read 2\n");
 		    if (RVALID && ((RAVAIL==0)||(RAVAIL==65536))){//additional ravails for larger byte packets
 			byte2=PS2_data & 0xFF;
-			printf("read 2 approved; byte2= %x\n",byte2);
+			// printf("read 2 approved; byte2= %x\n",byte2);
 
 			if (byte2==(char)0x5A){
 			    printf("select box\n");
 			    short int clicked_colour = board[selected_cell.row][selected_cell.col].colour;
 			    // change colour to selected colour
 			    if ((clicked_colour != BLACK) && clicked_colour != board[1][1].colour){
-				apply_colour(clicked_colour);
-				num_turns--;
-				display_hex(0,0, num_turns);
+                    apply_colour(clicked_colour);
+                    num_turns--;
+                    display_hex(0,0, num_turns);
 
-				// check if won game
-				won_game = check_won_game();
+                    // check if won game
+                    won_game = check_won_game();
 
 				if (won_game || num_turns <= 0){
 				    // exited while loop means either won or lost game
@@ -871,13 +867,12 @@ void keyboard_ISR(void)    //interrupt triggered w ANY mvmt: clear it every time
 			    }
 			    // if selected cell was flooded, reinitialize it
 			    if (!won_game && num_turns > 0 && board[selected_cell.row][selected_cell.col].flood){
-				selected_cell.row = rows - 2;
-				selected_cell.col = cols - 2;
-				draw_selected_cell();
+                    selected_cell.row = rows - 2;
+                    selected_cell.col = cols - 2;
+                    draw_selected_cell();
 			    }
 			    return;
 			}
-					//////////////////////////////
 			else if(byte2==(char)0xF0){//break code (key is done being pressed, read next byte -> break code sends 2 bytes
 				PS2_data = *(PS2_ptr);/////third read (after check for break)
 				RVALID = PS2_data & 0x8000;
@@ -890,7 +885,6 @@ void keyboard_ISR(void)    //interrupt triggered w ANY mvmt: clear it every time
 				if (RVALID && (RAVAIL==0)){
 					byte3=PS2_data & 0xFF;
 
-					/////////////////////////////////
 					if (byte3==(char)0x6B){
 						printf("move left\n");
 						// check if selected cell can move left first
@@ -934,10 +928,10 @@ void keyboard_ISR(void)    //interrupt triggered w ANY mvmt: clear it every time
 						return;
 
 					}
-					else {
+					/*else {
 						printf("invalid key press\n");
 						return;
-					}
+					}*/
 				}
 			}//else//FOR byte2 mismatch
 				//printf("invalid key press whoa\n");
