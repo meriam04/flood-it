@@ -166,48 +166,42 @@ int main(void)
     enable_A9_interrupts(); // enable interrupts on proc
    
     //volatile int * PS2_ptr = (int *)PS2_BASE;
-   //*(PS2_ptr) = 0xFF;    //reset the mouse
+    //*(PS2_ptr) = 0xFF;    //reset the mouse
     
+    volatile int * pixel_ctrl_ptr = (int *)PIXEL_BUF_CTRL_BASE;
     
+    /* set front pixel buffer to start of FPGA On-chip memory */
+    *(pixel_ctrl_ptr + 1) = FPGA_ONCHIP_BASE; // first store the address in the
+                                        // back buffer
     
-    //int num_turns = 25;
-    //int won_game = FALSE;
+    /* initialize a pointer to the pixel buffer, used by drawing functions */
+    pixel_buffer_start = *pixel_ctrl_ptr;
+    
+    /*now, swap the front/back buffers, to set the front buffer location */
+    wait_for_vsync();
+    
+    clear_screen(); // pixel_buffer_start points to the pixel buffer
+    
+    draw_menu();
+    // wait_for_vsync();
+    // wait_for_vsync();
+    
   
     // determine level here using the keys
     // just using default level for now
-    set_level(2);
+    // set_level(2);
     
     rows = RESOLUTION_X/size;
     cols = RESOLUTION_Y/size;
-    
-    volatile int * pixel_ctrl_ptr = (int *)PIXEL_BUF_CTRL_BASE;
-
-   
-    initialize_board();
-
-    
-    // ensure that neighbours of first of same colour are part of flood already
-    // apply_colour(board[1][1].colour);
 
     
     // initializing selected cell to be the bottom right
     selected_cell.row = rows - 2;
     selected_cell.col = cols - 2;
 
-    /* set front pixel buffer to start of FPGA On-chip memory */
-    *(pixel_ctrl_ptr + 1) = FPGA_ONCHIP_BASE; // first store the address in the
-                                        // back buffer
-    
-    /*now, swap the front/back buffers, to set the front buffer location */
-    wait_for_vsync();
-    
-    /* initialize a pointer to the pixel buffer, used by drawing functions */
-    pixel_buffer_start = *pixel_ctrl_ptr;
-    
-    clear_screen(); // pixel_buffer_start points to the pixel buffer
     
     initialize_board();
-    apply_colour(board[1][1].colour);
+    // apply_colour(board[1][1].colour);
     
     /* set back pixel buffer to start of SDRAM memory */
     //*(pixel_ctrl_ptr + 1) = SDRAM_BASE;
@@ -217,13 +211,11 @@ int main(void)
     int iteration = 0;
     printf("iteration: %d\n",iteration);
     */
-    draw_menu();
+
     //wait for click and then//////////////////////////////////////////////setup flag?
-    draw_board();
-    draw_selected_cell();
-    display_hex(0,0, num_turns);
-    
-    draw_box(x_cursor % RESOLUTION_X, y_cursor % RESOLUTION_Y, 3, WHITE);
+    // draw_board();
+    // draw_selected_cell();
+    // display_hex(0,0, num_turns);
     
     // while ( !won_game && (num_turns > 0))
     while (1)
@@ -306,7 +298,7 @@ void draw_board(){
 
 void reinitialize_board(){
     // free_board();
-    num_turns = 25; // should change this depending on selected level
+    // num_turns = 25; // should change this depending on selected level
     won_game = FALSE;
     initialize_board();
     
@@ -390,32 +382,37 @@ void set_level(int level){
     // very beginner
     if (level == 0){
         size = 80;
-        colour_num = 3;
+        colour_num = 9;
+        num_turns = 1;
     }
     // beginner
     else if (level == 1){
         size = 40;
         colour_num = 4;
+        num_turns = 10;
     }
     // intermediate
     else if (level == 2){
         size = 20;
         colour_num = 5;
+        num_turns = 25;
     }
     // hard
     else if (level == 3){
         size = 16;
         colour_num = 6;
+        num_turns = 32;
     }
     // very hard
     else if (level == 4){
         size = 10;
         colour_num = 7;
+        num_turns = 46;
     }
     else { // assume intermediate level
         size = 20;
         colour_num = 5;
-        
+        num_turns = 25;
     }
     return;
 }
