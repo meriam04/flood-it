@@ -16,7 +16,7 @@
 #define ICCIAR                0x0C
 #define ICDDCR                0x0
 
-#define A9_ONCHIP_END         0xC803FFFF    //i think?
+#define A9_ONCHIP_END         0xC803FFFF
 #define SDRAM_BASE            0xC0000000
 #define FPGA_ONCHIP_BASE      0xC8000000
 #define FPGA_CHAR_BASE        0xC9000000
@@ -183,10 +183,13 @@ int main(void)
     
 
 	draw_title();
-    wait_for_vsync();
-	wait_for_vsync();
-	wait_for_vsync();
-	wait_for_vsync();
+    int delay = 60;
+    // delay for a second
+    while (delay > 0){
+        wait_for_vsync();
+        delay --;
+    }
+
     draw_menu();
     
     rows = RESOLUTION_X/size;
