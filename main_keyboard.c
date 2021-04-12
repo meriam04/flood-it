@@ -284,6 +284,10 @@ void reinitialize_board(){
     
     // ensure that neighbours of first one are also considered flooded initially
     apply_colour(board[1][1].colour);
+    won_game = check_won_game();
+    if (won_game){
+        reinitialize_board();
+    }
     draw_board();
     
     // reinitialize selected cell to be bottom right
@@ -307,32 +311,35 @@ void apply_colour(short int colour){
 
 }
 void animate_flood(short int colour){
-    // want to animate the flood in a diagonal from board[1][1] to rows - 2
-    // would work better if it was a perfect square
-    int sum = 2;
+    // want to animate the flood in a diagonal from board[1][1] to rows - 1
+    int sum = 2; // bc starts at board[1][1]
     int max_sum = (rows - 2) + (cols - 2);
+    int animated = FALSE;
     while (sum < max_sum){
+        animated = FALSE;
+        // iterating through different permutations that allow for the sum of that diagonal
         for (int i = 1; (i < (sum) && (i < (rows - 1))); i++){
             for (int j = 1; (j < (sum) && (j < (cols - 1))); j++){
                 CellInfo cell = board[i][j];
+                // if along diagonal and flooded, colour in the cell
                 if ((i + j == sum) && cell.flood){
+                    animated = TRUE;
                     draw_box(cell.x_pos, cell.y_pos, size, colour);
                 }
             }
         }
-        wait_for_vsync();
+        // only apply delay if animated the previous time
+        if (animated){
+            wait_for_vsync();
+        }
         sum++;
-        
     }
 }
 void flood_cell(short int colour, CellInfo* cell){
     cell->visited = TRUE;
     cell->colour = colour;
     cell->flood = TRUE;
-    // printf("flooding cell: %d, %d\n" , cell->row, cell->col);
-    // wait_for_vsync(); // consider making this a shorter wait time
-    
-    // draw_box(cell->x_pos, cell->y_pos, size, colour);
+
     // iterating through all neighbouring cells
     for (int i = -1 ; i <= 1; i++){
         for (int j = -1; j <=1; j++){
@@ -390,7 +397,7 @@ void set_level(int level){
     // beginner
     else if (level == 1){
         size = 40;
-        colour_num = 5;
+        colour_num = 4;
         num_turns = 10;
     }
     // intermediate
