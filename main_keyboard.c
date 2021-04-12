@@ -166,9 +166,6 @@ int main(void)
     config_KEYs(); // configure pushbutton KEYs to generate interrupts
     config_PS2();
     enable_A9_interrupts(); // enable interrupts on proc
-   
-    //volatile int * PS2_ptr = (int *)PS2_BASE;
-    //*(PS2_ptr) = 0xFF;    //reset the mouse
     
     volatile int * pixel_ctrl_ptr = (int *)PIXEL_BUF_CTRL_BASE;
     
@@ -184,9 +181,13 @@ int main(void)
     
     clear_screen(); // pixel_buffer_start points to the pixel buffer
     
+
+	draw_title();
+	int delay_count=2000000;
+	while(delay_count){
+		delay_count--;
+	}
     draw_menu();
-    // wait_for_vsync();
-    // wait_for_vsync();
     
   
     // determine level here using the keys
@@ -203,30 +204,14 @@ int main(void)
 
     
     initialize_board();
-    // apply_colour(board[1][1].colour);
     
-    /* set back pixel buffer to start of SDRAM memory */
-    //*(pixel_ctrl_ptr + 1) = SDRAM_BASE;
-    //pixel_buffer_start = *(pixel_ctrl_ptr + 1); // we draw on the back buffer
-    
-    /*clear_screen();
-    int iteration = 0;
-    printf("iteration: %d\n",iteration);
-    */
-
-    //wait for click and then//////////////////////////////////////////////setup flag?
-    // draw_board();
-    // draw_selected_cell();
-    // display_hex(0,0, num_turns);
-    
-    // while ( !won_game && (num_turns > 0))
     while (1)
     {
        // does nothing as it waits for interrupts
     }
     
     
-    // free the board here probably
+    // free the board in memory
     free_board();
     
 }
@@ -794,7 +779,6 @@ void __attribute__((interrupt)) __cs3_isr_fiq(void)
 ****************************************************************************************/
 void pushbutton_ISR(void)
 {
-    printf("in pushbutton interrupt\n");
     volatile int * KEY_ptr = (int *)KEY_BASE;
     // volatile int * LEDR_ptr = (int*)LEDR_BASE;
     volatile int * SW_ptr = (int*)SW_BASE;
@@ -802,32 +786,40 @@ void pushbutton_ISR(void)
     int press;
     press = *(KEY_ptr + 3); // read the pushbutton interrupt register
     *(KEY_ptr + 3) = press; // Clear the interrupt
-    printf("key %d was pressed\n",press-1);
-    
-    //if(press&0x1)//key0 is pressed
-    //else if (press&0x2)//key1
-    //else if (press&0x4)//key2
-    //else//key3
-    
+    //printf("key %d was pressed\n",press-1);
     
     // printf("in interrupt\n");
-    // change this part to read from switch and call the level setting function
+	
+    //read from switch and call the level setting function
     int switch_value = *(SW_ptr);
+    int level;
+	if(switch_value==0x1)//sw0
+		level=0;
+	else if((switch_value&0x2)!=0)//sw1
+		level=1;
+	else if((switch_value & 0x4)!=0)//sw0 and 1
+		level=2;
+	else if((switch_value & 0x8)!=0)
+		level=3;
+	else if((switch_value&16)!=0)
+		level=4;
+	else{
+		level=2;
+		printf("invalid switch command\n");
+	} printf("level %d\n",level);
     // free board before changing size
     free_board();
     
-    set_level(switch_value);
+    set_level(level);
     reinitialize_board();
-    
-     //*(LEDR_ptr)=key_dir;
-     //key_dir ^= 1; // Toggle key_dir value
+	
     return;
 }
 
 void keyboard_ISR(void)    //interrupt triggered w ANY mvmt: clear it every time, and execute ONLY if click (byte1: 0000101, others are moot) (need to store all movement to see total x,y?)
 {
     volatile int * PS2_ptr = (int *)PS2_BASE;
-    volatile int * LEDR_ptr= (int*)LEDR_BASE;
+    //volatile int * LEDR_ptr= (int*)LEDR_BASE;
     int PS2_data, RAVAIL, RVALID;
     unsigned char byte1 = 0, byte2 = 0, byte3 = 0;
     //have to read this first!!! first read below::::
@@ -835,29 +827,28 @@ void keyboard_ISR(void)    //interrupt triggered w ANY mvmt: clear it every time
     RAVAIL = PS2_data & 0xFFFF0000;
     RVALID = PS2_data & 0x8000;
     
-    printf("interruptedkey data %d\n",PS2_data);
-	printf("RVALIDbyte1= %d, RAVAIL= %d\n",RVALID,RAVAIL);
-    *(LEDR_ptr) = key_dir;
-    key_dir ^=1;
+  //  printf("interruptedkey data %d\n",PS2_data);
+	//printf("RVALIDbyte1= %d, RAVAIL= %d\n",RVALID,RAVAIL);
+    //*(LEDR_ptr) = key_dir;
+    //key_dir ^=1;
     
-    int flag = *(PS2_ptr +1) & 0x100;
-    if (!flag)
-        printf("interrupt flag cleared after oneread\n");
+    //int flag = *(PS2_ptr +1) & 0x100;
+    //if (!flag)
+        //printf("interrupt flag cleared after oneread\n");
     
     if(RVALID && (RAVAIL==0)){ //RVALID means data is available, ravail=0 means data has stopped being sent (press is over)
         byte1 = PS2_data & 0xFF;
         printf("read 1 approved; byte1= %x\n",byte1);
         
 		if((byte1==(char)0xE0) ||(byte1==(char)0xF0)){//break code (key is done being pressed, read next byte -> break code sends 2 bytes
-		    printf("byte1 in game\n");
 		    PS2_data = *(PS2_ptr);/////second read (after check for break)
 		    RVALID = PS2_data & 0x8000;
 		    RAVAIL = PS2_data & 0xFFFF0000; //top 16 BITS!!!
 		    printf("RVALIDbyte2= %d, RAVAIL= %d\n",RVALID,RAVAIL);
 
-			flag = *(PS2_ptr +1) & 0x100;
-		    	if (!flag)
-				printf("interrupt flag cleared after read 2\n");
+			//flag = *(PS2_ptr +1) & 0x100;
+		    	//if (!flag)
+				//printf("interrupt flag cleared after read 2\n");
 		    if (RVALID && ((RAVAIL==0)||(RAVAIL==65536))){//additional ravails for larger byte packets
 			byte2=PS2_data & 0xFF;
 			printf("read 2 approved; byte2= %x\n",byte2);
@@ -896,9 +887,9 @@ void keyboard_ISR(void)    //interrupt triggered w ANY mvmt: clear it every time
 				RVALID = PS2_data & 0x8000;
 				RAVAIL = PS2_data & 0xFFFF0000; //top 16 BITS!!!
 
-				flag = *(PS2_ptr +1) & 0x100;
-				if (!flag)
-					printf("interrupt flag cleared after read 3\n char %x\n", byte1);
+				//flag = *(PS2_ptr +1) & 0x100;
+				//if (!flag)
+					//printf("interrupt flag cleared after read 3\n char %x\n", byte1);
 
 				if (RVALID && (RAVAIL==0)){
 					byte3=PS2_data & 0xFF;
@@ -952,8 +943,8 @@ void keyboard_ISR(void)    //interrupt triggered w ANY mvmt: clear it every time
 						return;
 					}
 				}
-			}else//FOR byte2 mismatch
-				printf("invalid key press whoa\n");
+			}//else//FOR byte2 mismatch
+				//printf("invalid key press whoa\n");
 		    }
         }
     }
@@ -1473,3 +1464,13 @@ void draw_endscreen(){
     	}
 }
 
+void draw_title(){
+	/*const uint16_t colour[240][320] = {
+		
+		
+	for (int j=0;j<240;j++){
+		for(int i=0;i<320;i++){
+			plot_pixel(i, j, colour[j][i]);
+		}
+	}*/
+}
