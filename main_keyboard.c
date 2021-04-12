@@ -143,7 +143,7 @@ int size = BOX_LEN; // default length
 int colour_num = NUM_COLOURS; // default colours
 int x_cursor = 0;
 int y_cursor = 0;
-short int colours[] = {YELLOW, GREEN, BLUE, CYAN, MAGENTA, GREY, PINK, ORANGE, WHITE, RED};
+short int colours[] = {YELLOW, GREEN, BLUE, CYAN, MAGENTA, ORANGE, GREY, PINK, WHITE, RED};
 int num_turns = 25;
 int won_game = FALSE;
 
