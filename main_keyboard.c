@@ -863,13 +863,14 @@ void keyboard_ISR(void)    //interrupt triggered w ANY mvmt: clear it every time
 				if (won_game || num_turns <= 0){
 				    // exited while loop means either won or lost game
 				    display_win_lose_hex(won_game);
+                    draw_endscreen();
 
 				    // free the board here probably
 				    // free_board();
 				}
 			    }
 			    // if selected cell was flooded, reinitialize it
-			    if (board[selected_cell.row][selected_cell.col].flood){
+			    if (!won_game && num_turns > 0 && board[selected_cell.row][selected_cell.col].flood){
 				selected_cell.row = rows - 2;
 				selected_cell.col = cols - 2;
 				draw_selected_cell();
