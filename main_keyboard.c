@@ -852,7 +852,7 @@ void keyboard_ISR(void)    //interrupt triggered w ANY mvmt: clear it every time
 			flag = *(PS2_ptr +1) & 0x100;
 		    	if (!flag)
 				printf("interrupt flag cleared after read 2\n");
-		    if (RVALID && ((RAVAIL==0)||(RAVAIL==65536))){
+		    if (RVALID && ((RAVAIL==0)||(RAVAIL==65536))){//additional ravails for larger byte packets
 			byte2=PS2_data & 0xFF;
 			printf("read 2 approved; byte2= %x\n",byte2);
 
