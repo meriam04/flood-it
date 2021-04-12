@@ -822,14 +822,15 @@ void keyboard_ISR(void)    //interrupt triggered w ANY mvmt: clear it every time
 {
     volatile int * PS2_ptr = (int *)PS2_BASE;
     volatile int * LEDR_ptr= (int*)LEDR_BASE;
-    int PS2_data, PS2_control, RAVAIL, RVALID;
-    unsigned char byte1 = 0, byte2 = 0;
+    int PS2_data, RAVAIL, RVALID;
+    unsigned char byte1 = 0, byte2 = 0, byte3 = 0;
     //have to read this first!!! first read below::::
-    PS2_data = *(PS2_ptr);    //reading from ps2data (lower 8 bits are Data) automatically decrements ravail/num on stack=>next byte now in PS2_data
+    PS2_data = *(PS2_ptr);   //reading from ps2data (lower 8 bits are Data) automatically decrements ravail/num on stack=>next byte now in PS2_data
     RAVAIL = PS2_data & 0xFFFF0000;
     RVALID = PS2_data & 0x8000;
     
-    printf("interruptedkey\n data %d\n",PS2_data);
+    printf("interruptedkey data %d\n",PS2_data);
+	printf("RVALIDbyte1= %d, RAVAIL= %d\n",RVALID,RAVAIL);
     *(LEDR_ptr) = key_dir;
     key_dir ^=1;
     
@@ -839,107 +840,126 @@ void keyboard_ISR(void)    //interrupt triggered w ANY mvmt: clear it every time
     
     if(RVALID && (RAVAIL==0)){ //RVALID means data is available, ravail=0 means data has stopped being sent (press is over)
         byte1 = PS2_data & 0xFF;
+        printf("read 1 approved; byte1= %x\n",byte1);
         
-        if(byte1==(char)0xF0){//break code (key is done being pressed, read next byte -> break code sends 2 bytes
-            
-            PS2_data = *(PS2_ptr);/////second read (after check for break)
-            RVALID = PS2_data & 0x8000;
-            RAVAIL = PS2_data & 0xFFFF0000; //top 16 BITS!!!
-            
-            flag = *(PS2_ptr +1) & 0x100;
-            if (!flag)
-                printf("interrupt flag cleared after read 2\n char %x\n", byte1);
-        
-            if (RVALID && (RAVAIL==0)){
-                byte2=PS2_data & 0xFF;
-               
-                if (byte2==(char)0x1C){
-                    printf("move left\n");
-                    // check if selected cell can move left first
-                    // then decrememnt column if can
-                    if (selected_cell.row > 1){ // check here not sure about this
-                        erase_selected_cell();
-                        selected_cell.row--;
-                        draw_selected_cell();
-                    }
-                    return;
-                    
-                }
-                else if (byte2==(char)0x23){
-                    printf("move right\n");
-                     
-                    if (selected_cell.row < (rows - 2)){ // check here not sure about this
-                        erase_selected_cell();
-                        selected_cell.row++;
-                        draw_selected_cell();
-                    }
-                    return;
-                }
-                else if (byte2==(char)0x1D){
-                    printf("move up\n");
-                    if (selected_cell.col > 1){
-                        // redraw current selected cell first then draw new one too
-                        erase_selected_cell();
-                        selected_cell.col--;
-                        draw_selected_cell();
-                    }
-                    return;
-                }
-                else if (byte2==(char)0x1B){
-                    printf("move down\n");
-                    if (selected_cell.col < (cols - 2)){
-                        erase_selected_cell();
-                        selected_cell.col++;
-                        draw_selected_cell();
-                    }
-                    
-                    return;
-                    
-                }
-                else if (byte2==(char)0x5A){
-                    printf("select box\n");
-                    short int clicked_colour = board[selected_cell.row][selected_cell.col].colour;
-                    // change colour to selected colour
-                    if ((clicked_colour != BLACK) && clicked_colour != board[1][1].colour){
-                        apply_colour(clicked_colour);
-                        num_turns--;
-                        display_hex(0,0, num_turns);
-                        
-                        // check if won game
-                        won_game = check_won_game();
-                        
-                        if (won_game || num_turns <= 0){
-                            // exited while loop means either won or lost game
-                            display_win_lose_hex(won_game);
-                            
-                            // free the board here probably
-                            // free_board();
-                        }
-                    }
-                    // if selected cell was flooded, reinitialize it
-                    if (board[selected_cell.row][selected_cell.col].flood){
-                        selected_cell.row = rows - 2;
-                        selected_cell.col = cols - 2;
-                        draw_selected_cell();
-                    }
-                    return;
-                }
-                else {
-                    printf("invalid key press\n");
-                    return;
-                }
-            }
+		if((byte1==(char)0xE0) ||(byte1==(char)0xF0)){//break code (key is done being pressed, read next byte -> break code sends 2 bytes
+		    printf("byte1 in game\n");
+		    PS2_data = *(PS2_ptr);/////second read (after check for break)
+		    RVALID = PS2_data & 0x8000;
+		    RAVAIL = PS2_data & 0xFFFF0000; //top 16 BITS!!!
+		    printf("RVALIDbyte2= %d, RAVAIL= %d\n",RVALID,RAVAIL);
+
+			flag = *(PS2_ptr +1) & 0x100;
+		    	if (!flag)
+				printf("interrupt flag cleared after read 2\n");
+		    if (RVALID && ((RAVAIL==0)||(RAVAIL==65536))){
+			byte2=PS2_data & 0xFF;
+			printf("read 2 approved; byte2= %x\n",byte2);
+
+			if (byte2==(char)0x5A){
+			    printf("select box\n");
+			    short int clicked_colour = board[selected_cell.row][selected_cell.col].colour;
+			    // change colour to selected colour
+			    if ((clicked_colour != BLACK) && clicked_colour != board[1][1].colour){
+				apply_colour(clicked_colour);
+				num_turns--;
+				display_hex(0,0, num_turns);
+
+				// check if won game
+				won_game = check_won_game();
+
+				if (won_game || num_turns <= 0){
+				    // exited while loop means either won or lost game
+				    display_win_lose_hex(won_game);
+
+				    // free the board here probably
+				    // free_board();
+				}
+			    }
+			    // if selected cell was flooded, reinitialize it
+			    if (board[selected_cell.row][selected_cell.col].flood){
+				selected_cell.row = rows - 2;
+				selected_cell.col = cols - 2;
+				draw_selected_cell();
+			    }
+			    return;
+			}
+					//////////////////////////////
+			else if(byte2==(char)0xF0){//break code (key is done being pressed, read next byte -> break code sends 2 bytes
+				PS2_data = *(PS2_ptr);/////third read (after check for break)
+				RVALID = PS2_data & 0x8000;
+				RAVAIL = PS2_data & 0xFFFF0000; //top 16 BITS!!!
+
+				flag = *(PS2_ptr +1) & 0x100;
+				if (!flag)
+					printf("interrupt flag cleared after read 3\n char %x\n", byte1);
+
+				if (RVALID && (RAVAIL==0)){
+					byte3=PS2_data & 0xFF;
+
+					/////////////////////////////////
+					if (byte3==(char)0x6B){
+						printf("move left\n");
+						// check if selected cell can move left first
+						// then decrememnt column if can
+						if (selected_cell.row > 1){ // check here not sure about this
+							erase_selected_cell();
+							selected_cell.row--;
+							draw_selected_cell();
+						}
+						return;
+
+					}
+					else if (byte3==(char)0x74){
+						printf("move right\n");
+
+						if (selected_cell.row < (rows - 2)){ // check here not sure about this
+							erase_selected_cell();
+							selected_cell.row++;
+							draw_selected_cell();
+						}
+						return;
+					}
+					else if (byte3==(char)0x75){
+						printf("move up\n");
+						if (selected_cell.col > 1){
+							// redraw current selected cell first then draw new one too
+							erase_selected_cell();
+							selected_cell.col--;
+							draw_selected_cell();
+						}
+						return;
+					}
+					else if (byte3==(char)0x72){
+						printf("move down\n");
+						if (selected_cell.col < (cols - 2)){
+							erase_selected_cell();
+							selected_cell.col++;
+							draw_selected_cell();
+						}
+
+						return;
+
+					}
+					else {
+						printf("invalid key press\n");
+						return;
+					}
+				}
+			}else//FOR byte2 mismatch
+				printf("invalid key press whoa\n");
+		    }
         }
     }
     
-    /*do we need to detect edge of screen?
+    /*if needed
      if ((byte2 == (char)0xAA) && (byte3 == (char)0x00)){//chck if initialization of mouse is completed
-        // mouse inserted; initialize sending of data //aka mouse hit left corner?
+        // initialize sending of data
         *(PS2_ptr) = 0xF4;    //command to initialize data reporting, enables data reporting and resets its movement counters (need for edge of screen??)
     }*/
     //write to lower 8 bits of data reg to send commands => check CE to see if error recieving it
-    
-    
+	
+	
     return;
 }
 
