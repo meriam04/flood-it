@@ -36,9 +36,9 @@
 #define WHITE 0xFFFF
 #define YELLOW 0xFFE0
 #define RED 0xF800
-#define GREEN 0x07D0 /*07E0*/
+#define GREEN 0x07E0 /*0x07D0*/
 #define BLUE 0x001F
-#define CYAN 0x06FF /*07FF*/
+#define CYAN 0x06FF /*0x07FF*/
 #define MAGENTA 0xF81F
 #define GREY 0xC618
 #define PINK 0xFC18
@@ -183,19 +183,16 @@ int main(void)
     
 
 	draw_title();
-    wait();
-    draw_menu();
-    
+    // wait();
+    // draw_menu();
     
     rows = RESOLUTION_X/size;
     cols = RESOLUTION_Y/size;
-
     
     // initializing selected cell to be the bottom right
     selected_cell.row = rows - 2;
     selected_cell.col = cols - 2;
 
-    
     initialize_board();
     
     while (1)
@@ -844,14 +841,6 @@ void keyboard_ISR(void)    //interrupt triggered w ANY mvmt: clear it every time
     RAVAIL = PS2_data & 0xFFFF0000;
     RVALID = PS2_data & 0x8000;
     
-    //  printf("interruptedkey data %d\n",PS2_data);
-	// printf("RVALIDbyte1= %d, RAVAIL= %d\n",RVALID,RAVAIL);
-    //*(LEDR_ptr) = key_dir;
-    //key_dir ^=1;
-    
-    //int flag = *(PS2_ptr +1) & 0x100;
-    //if (!flag)
-        //printf("interrupt flag cleared after oneread\n");
     
     if(RVALID && (RAVAIL==0)){ //RVALID means data is available, ravail=0 means data has stopped being sent (press is over)
         byte1 = PS2_data & 0xFF;
@@ -863,16 +852,12 @@ void keyboard_ISR(void)    //interrupt triggered w ANY mvmt: clear it every time
 		    RVALID = PS2_data & 0x8000;
 		    RAVAIL = PS2_data & 0xFFFF0000; //top 16 BITS!!!
 
-			//flag = *(PS2_ptr +1) & 0x100;
-		    	//if (!flag)
-				//printf("interrupt flag cleared after read 2\n");
 		    if (RVALID){//additional ravails for larger byte packets
 			byte2=PS2_data & 0xFF;
-			// printf("read 2 approved; byte2= %x\n",byte2);
-            // printf(" ");
+
 
                 if (byte2==(char)0x5A){
-                    printf("select box\n");
+                    // printf("select box\n");
                     short int clicked_colour = board[selected_cell.row][selected_cell.col].colour;
                     // change colour to selected colour
                     if ((clicked_colour != BLACK) && clicked_colour != board[1][1].colour){
@@ -889,14 +874,23 @@ void keyboard_ISR(void)    //interrupt triggered w ANY mvmt: clear it every time
                         wait_for_vsync();
                         draw_endscreen();
 
-                        // free the board here probably
-                        // free_board();
                     }
                         // if selected cell was flooded, reinitialize it
                     else if (board[selected_cell.row][selected_cell.col].flood){
-                            selected_cell.row = rows - 2;
-                            selected_cell.col = cols - 2;
-                            draw_selected_cell();
+
+                        int selected = FALSE;
+                        // choose new default selected tile to be the first that isn't flooded
+                        for (int i = 1; (i < (rows - 1) && !selected); ++i){
+                            for (int j = 1; (j < (cols - 1) && !selected) ; ++j){
+                                CellInfo element =  board[i][j];
+                                if (!element.flood){
+                                    selected_cell.row = i;
+                                    selected_cell.col = j;
+                                    selected = TRUE;
+                                }
+                            }
+                        }
+                        draw_selected_cell();
                         }
                     }
                     
@@ -909,10 +903,7 @@ void keyboard_ISR(void)    //interrupt triggered w ANY mvmt: clear it every time
                     RVALID = PS2_data & 0x8000;
                     RAVAIL = PS2_data & 0xFFFF0000; //top 16 BITS!!!
                     // printf("RVALIDbyte3= %d, RAVAIL= %d\n",RVALID,RAVAIL);
-                    // printf(" ");
-                    //flag = *(PS2_ptr +1) & 0x100;
-                    //if (!flag)
-                        //printf("interrupt flag cleared after read 3\n char %x\n", byte1);
+
 
                     if (RVALID && (RAVAIL==0)){
                         byte3=PS2_data & 0xFF;
@@ -920,7 +911,7 @@ void keyboard_ISR(void)    //interrupt triggered w ANY mvmt: clear it every time
                         // printf(" ");
                         //see WHICH arrow key was pressed
                         if (byte3==(char)0x6B){
-                            printf("move left\n");
+                            // printf("move left\n");
                             // check if selected cell can move left first
                             // then decrememnt column if can
                             if (selected_cell.row > 1){ // check here not sure about this
@@ -932,7 +923,7 @@ void keyboard_ISR(void)    //interrupt triggered w ANY mvmt: clear it every time
 
                         }
                         else if (byte3==(char)0x74){
-                            printf("move right\n");
+                            // printf("move right\n");
 
                             if (selected_cell.row < (rows - 2)){ // check here not sure about this
                                 erase_selected_cell();
@@ -942,7 +933,7 @@ void keyboard_ISR(void)    //interrupt triggered w ANY mvmt: clear it every time
                             return;
                         }
                         else if (byte3==(char)0x75){
-                            printf("move up\n");
+                            // printf("move up\n");
                             if (selected_cell.col > 1){
                                 // redraw current selected cell first then draw new one too
                                 erase_selected_cell();
@@ -952,7 +943,7 @@ void keyboard_ISR(void)    //interrupt triggered w ANY mvmt: clear it every time
                             return;
                         }
                         else if (byte3==(char)0x72){
-                            printf("move down\n");
+                            // printf("move down\n");
                             if (selected_cell.col < (cols - 2)){
                                 erase_selected_cell();
                                 selected_cell.col++;
@@ -963,7 +954,7 @@ void keyboard_ISR(void)    //interrupt triggered w ANY mvmt: clear it every time
 
                         }
                         else {
-                            printf("invalid key press\n");
+                            // printf("invalid key press\n");
                             return;
                         }
                     }
