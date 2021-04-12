@@ -1,6 +1,9 @@
 /* globals */
 #define BUF_SIZE 80000 // about 10 seconds of buffer (@ 8K samples/sec)
 #define BUF_THRESHOLD 96 // 75% of 128 word buffer
+#define AUDIO_BASE 0xFF203040
+#define LED_BASE  0xFF200000
+#define KEY_BASE   0xFF200050
 /* function prototypes */
 void check_KEYs(int *, int *, int *);
 /*******************************************************************************
