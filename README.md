@@ -34,4 +34,5 @@ Users can use the same steps to start a new game as they did in the beginning.
 
 Check out a demo of the game!
 
-<video src="img/demo.mp4" controls title="Title"></video>
+https://github.com/meriam04/flood-it/assets/81719754/31b613df-a556-44c6-a18d-022cfa8c6348
+
