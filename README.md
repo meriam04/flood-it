@@ -29,3 +29,9 @@ The number of remaining moves is displayed on the HEX display. When the game is 
 ## 3.0 Starting a new game
 
 Users can use the same steps to start a new game as they did in the beginning.
+
+## 4.0 Demo
+
+Check out a demo of the game!
+
+<video src="demo.mp4" controls title="Title"></video>
