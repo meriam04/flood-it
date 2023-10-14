@@ -34,4 +34,4 @@ Users can use the same steps to start a new game as they did in the beginning.
 
 Check out a demo of the game!
 
-<video src="demo.mp4" controls title="Title"></video>
+<video src="img/demo.mp4" controls title="Title"></video>
